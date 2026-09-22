@@ -22,6 +22,38 @@ export type FinalAssessment = {
 	dimensionLevels?: Partial<Record<string, DimensionLevelId>>;
 	behaviourComparison?: BehaviourComparisonResult;
 	careerSuggestions?: FinalCareerSuggestion[];
+	finalEvaluation?: FinalUserEvaluation;
+};
+
+export type FinalUserEvaluation = {
+	experienceName: string;
+	isPlaceholder?: boolean;
+	headline: string;
+	workStyle: string;
+	benefit: string;
+	challenge: string;
+	improvement: string;
+	strengthLabel: string;
+	developmentLabel: string;
+	evidence: string;
+};
+
+export const placeholderFinalEvaluation: FinalUserEvaluation = {
+	experienceName: 'Bác sĩ cấp cứu',
+	isPlaceholder: true,
+	headline: 'Bạn làm tốt nhất khi có đủ dữ kiện để xác định điều quan trọng trước.',
+	workStyle:
+		'Bạn thường quan sát và kiểm tra thông tin trước khi đưa ra quyết định. Khi tình huống thay đổi, bạn có thể điều chỉnh cách xử lý thay vì giữ nguyên phương án ban đầu.',
+	benefit:
+		'Cách làm này giúp bạn hạn chế quyết định vội và giữ được hướng xử lý có căn cứ. Đây là lợi thế trong công việc cần phân tích thông tin và phản ứng trước dữ kiện mới.',
+	challenge:
+		'Khi nhiều yêu cầu xuất hiện cùng lúc và thời gian bị giới hạn, bạn có thể mất thêm thời gian để chốt việc cần làm trước.',
+	improvement:
+		'Hãy luyện với các tình huống ngắn có giới hạn thời gian. Trước khi xử lý chi tiết, hãy gọi tên một việc ưu tiên và một dữ kiện khiến bạn chọn việc đó, sau đó xin phản hồi về quyết định của mình.',
+	strengthLabel: 'Tư duy phân tích và khả năng thích ứng',
+	developmentLabel: 'Ưu tiên khi chịu áp lực',
+	evidence:
+		'Trong VR, bạn kiểm tra các dữ kiện chính và đổi hướng phù hợp khi có thông tin mới. Ở nhiệm vụ dồn dập, bạn cần thêm thời gian để xác định thứ tự ưu tiên.'
 };
 
 export type BehaviourComparisonKind = 'confirmed' | 'emerging' | 'development';

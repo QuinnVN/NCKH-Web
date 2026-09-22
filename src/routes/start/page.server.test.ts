@@ -23,7 +23,8 @@ function loginEvent(name: string, email: string) {
 	formData.set('name', name);
 	formData.set('email', email);
 	return {
-		request: new Request('http://localhost/start?/login', { method: 'POST', body: formData })
+		request: new Request('http://localhost/start?/login', { method: 'POST', body: formData }),
+		cookies: { set: vi.fn() }
 	};
 }
 
@@ -32,13 +33,17 @@ describe('start page login action', () => {
 
 	it('returns the saved submission when both participant fields match', async () => {
 		repository.findQuestionnaireSubmission.mockResolvedValue(submission);
-		const result = await actions.login(
-			loginEvent(' Nguyen Van A ', ' Student@Example.com ') as never
-		);
+		const event = loginEvent(' Nguyen Van A ', ' Student@Example.com ');
+		const result = await actions.login(event as never);
 		expect(result).toEqual({ success: true, submission });
 		expect(repository.findQuestionnaireSubmission).toHaveBeenCalledWith(
 			'Nguyen Van A',
 			'student@example.com'
+		);
+		expect(event.cookies.set).toHaveBeenCalledWith(
+			'desmap_assessment_id',
+			submission.assessmentId,
+			expect.objectContaining({ httpOnly: true, path: '/', sameSite: 'lax' })
 		);
 	});
 

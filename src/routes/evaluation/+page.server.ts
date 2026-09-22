@@ -1,17 +1,23 @@
 import { dev } from '$app/environment';
+import { findFinalEvaluation } from '$lib/server/final-evaluations';
 import { getInitialAssessmentMode } from '$lib/server/initial-assessment-mode';
-import type { FinalAssessment } from '$lib/evaluation';
+import { findQuestionnaireSubmissionByAssessmentId } from '$lib/server/questionnaire-submissions';
 import type { PageServerLoad } from './$types';
 
-async function loadFinalAssessment(): Promise<FinalAssessment | null> {
-	// Replace this stub with the MongoDB lookup when final assessments are persisted.
-	return null;
-}
-
-export const load: PageServerLoad = async ({ url }) => {
+export const load: PageServerLoad = async ({ cookies, url }) => {
+	let finalAssessment = null;
+	const assessmentId = cookies.get('desmap_assessment_id');
+	if (assessmentId) {
+		try {
+			const submission = await findQuestionnaireSubmissionByAssessmentId(assessmentId);
+			if (submission) finalAssessment = await findFinalEvaluation(submission);
+		} catch {
+			// A database outage must not block the locally saved initial assessment.
+		}
+	}
 	return {
 		initialAssessmentMode: getInitialAssessmentMode(),
-		finalAssessment: await loadFinalAssessment(),
+		finalAssessment,
 		previewFinal: dev && url.searchParams.get('preview') === 'final'
 	};
 };

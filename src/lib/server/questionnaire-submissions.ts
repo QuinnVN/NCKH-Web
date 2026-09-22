@@ -1,7 +1,6 @@
-import { env } from '$env/dynamic/private';
-import { attachDatabasePool } from '@vercel/functions/db-connections';
-import { MongoClient, MongoServerError, type Collection } from 'mongodb';
+import { MongoServerError, type Collection } from 'mongodb';
 import type { QuestionnaireSubmission } from '$lib/questionnaire';
+import { getMongoDatabase } from './mongodb';
 
 type StoredQuestionnaireSubmission = QuestionnaireSubmission & {
 	normalizedEmail: string;
@@ -13,17 +12,10 @@ type StoredQuestionnaireSubmission = QuestionnaireSubmission & {
 let collectionPromise: Promise<Collection<StoredQuestionnaireSubmission>> | undefined;
 
 async function getCollection(): Promise<Collection<StoredQuestionnaireSubmission>> {
-	if (!env.MONGODB_URI) throw new Error('MONGODB_URI is not configured.');
 	collectionPromise ??= (async () => {
-		const client = new MongoClient(env.MONGODB_URI as string, {
-			maxIdleTimeMS: 5_000,
-			serverSelectionTimeoutMS: 5_000
-		});
-		attachDatabasePool(client);
-		await client.connect();
-		const collection = client
-			.db(env.MONGODB_DATABASE || 'desmap')
-			.collection<StoredQuestionnaireSubmission>('questionnaire_submissions');
+		const collection = (await getMongoDatabase()).collection<StoredQuestionnaireSubmission>(
+			'questionnaire_submissions'
+		);
 		await Promise.all([
 			collection.createIndex({ normalizedEmail: 1 }, { unique: true }),
 			collection.createIndex({ assessmentId: 1 }, { unique: true })
@@ -47,6 +39,22 @@ function normalizeParticipantName(name: string): string {
 	return name.trim().replace(/\s+/g, ' ').toLocaleLowerCase('vi');
 }
 
+function toQuestionnaireSubmission(
+	submission: StoredQuestionnaireSubmission
+): QuestionnaireSubmission {
+	return {
+		version: submission.version,
+		completed: submission.completed,
+		assessmentId: submission.assessmentId,
+		startedAt: submission.startedAt,
+		completedAt: submission.completedAt,
+		participant: submission.participant,
+		careerInterests: submission.careerInterests,
+		answers: submission.answers,
+		scores: submission.scores
+	};
+}
+
 export async function findQuestionnaireSubmission(
 	name: string,
 	normalizedEmail: string
@@ -60,17 +68,15 @@ export async function findQuestionnaireSubmission(
 		return null;
 	}
 
-	return {
-		version: submission.version,
-		completed: submission.completed,
-		assessmentId: submission.assessmentId,
-		startedAt: submission.startedAt,
-		completedAt: submission.completedAt,
-		participant: submission.participant,
-		careerInterests: submission.careerInterests,
-		answers: submission.answers,
-		scores: submission.scores
-	};
+	return toQuestionnaireSubmission(submission);
+}
+
+export async function findQuestionnaireSubmissionByAssessmentId(
+	assessmentId: string
+): Promise<QuestionnaireSubmission | null> {
+	const collection = await getCollection();
+	const submission = await collection.findOne({ assessmentId });
+	return submission ? toQuestionnaireSubmission(submission) : null;
 }
 
 export async function saveQuestionnaireSubmission(

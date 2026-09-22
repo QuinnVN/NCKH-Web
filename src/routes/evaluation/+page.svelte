@@ -8,12 +8,14 @@
 	import FinalCareerSuggestions from '$lib/components/FinalCareerSuggestions.svelte';
 	import FinalDimensionDetails from '$lib/components/FinalDimensionDetails.svelte';
 	import FinalDesmapRadar from '$lib/components/FinalDesmapRadar.svelte';
+	import FinalUserEvaluation from '$lib/components/FinalUserEvaluation.svelte';
 	import Header from '$lib/components/Header.svelte';
 	import InitialMatchPanel from '$lib/components/InitialMatchPanel.svelte';
 	import {
 		evaluationPageState,
 		experiences,
 		placeholderBehaviourComparison,
+		placeholderFinalEvaluation,
 		type FinalAssessment
 	} from '$lib/evaluation';
 	import {
@@ -410,6 +412,9 @@
 						ontoggle={() => toggleFinalSection('careers')}
 					/>
 				{/if}
+				<FinalUserEvaluation
+					evaluation={finalAssessment.finalEvaluation ?? placeholderFinalEvaluation}
+				/>
 			{:else}
 				<section
 					class="mt-3 grid gap-4 min-[850px]:grid-cols-[1.15fr_.85fr]"
