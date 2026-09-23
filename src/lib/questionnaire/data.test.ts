@@ -1,12 +1,19 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
 	buildCompletionPayload,
+	clearSavedQuestionnaire,
 	createAssessmentId,
+	createQuestionnairePresentationOrder,
 	desmapQuestions,
 	parseCompletionPayload,
+	QUESTIONNAIRE_COMPLETION_STORAGE_KEY,
+	QUESTIONNAIRE_STORAGE_KEY,
 	readCompletionPayload,
 	readQuestionnaireSessionRoute,
-	writeCompletionPayload
+	readSavedQuestionnaire,
+	writeCompletionPayload,
+	writeSavedQuestionnaire,
+	type QuestionnaireDraft
 } from './data';
 
 const uuid = '123e4567-e89b-42d3-a456-426614174000';
@@ -23,6 +30,72 @@ function completedRecord() {
 		completedAt: '2026-09-12T08:30:00.000Z'
 	});
 }
+
+function draftRecord(): QuestionnaireDraft {
+	return {
+		version: 1,
+		completed: false,
+		step: 'questions',
+		currentIndex: 1,
+		startedAt: '2026-09-12T08:00:00.000Z',
+		updatedAt: '2026-09-12T08:05:00.000Z',
+		participant: { name: 'Nguyen Van A', email: 'student@example.com' },
+		careerInterests: ['science-research'],
+		answers: { [desmapQuestions[0].id]: 'A' },
+		presentationOrder: createQuestionnairePresentationOrder()
+	};
+}
+
+function mockBrowserStorage() {
+	const local = new Map<string, string>();
+	const session = new Map<string, string>();
+	const storage = (values: Map<string, string>) => ({
+		getItem: (key: string) => values.get(key) ?? null,
+		setItem: (key: string, value: string) => values.set(key, value),
+		removeItem: (key: string) => values.delete(key)
+	});
+	vi.stubGlobal('window', { localStorage: storage(local), sessionStorage: storage(session) });
+	return { local, session };
+}
+
+describe('questionnaire draft storage', () => {
+	afterEach(() => vi.unstubAllGlobals());
+
+	it('autosaves the draft in local storage and keeps completion in session storage', () => {
+		const { local, session } = mockBrowserStorage();
+		const draft = draftRecord();
+
+		expect(writeSavedQuestionnaire(draft)).toBe(true);
+		expect(readSavedQuestionnaire()).toEqual(draft);
+		expect(local.get(QUESTIONNAIRE_STORAGE_KEY)).toBe(JSON.stringify(draft));
+		expect(session.has(QUESTIONNAIRE_STORAGE_KEY)).toBe(false);
+
+		expect(writeCompletionPayload(completedRecord())).toBe(true);
+		expect(session.has(QUESTIONNAIRE_COMPLETION_STORAGE_KEY)).toBe(true);
+		expect(local.has(QUESTIONNAIRE_COMPLETION_STORAGE_KEY)).toBe(false);
+	});
+
+	it('moves an existing session draft to local storage', () => {
+		const { local, session } = mockBrowserStorage();
+		const draft = draftRecord();
+		session.set(QUESTIONNAIRE_STORAGE_KEY, JSON.stringify(draft));
+
+		expect(readSavedQuestionnaire()).toEqual(draft);
+		expect(local.get(QUESTIONNAIRE_STORAGE_KEY)).toBe(JSON.stringify(draft));
+		expect(session.has(QUESTIONNAIRE_STORAGE_KEY)).toBe(false);
+	});
+
+	it('clears both current and legacy drafts after completion', () => {
+		const { local, session } = mockBrowserStorage();
+		const raw = JSON.stringify(draftRecord());
+		local.set(QUESTIONNAIRE_STORAGE_KEY, raw);
+		session.set(QUESTIONNAIRE_STORAGE_KEY, raw);
+
+		clearSavedQuestionnaire();
+		expect(local.has(QUESTIONNAIRE_STORAGE_KEY)).toBe(false);
+		expect(session.has(QUESTIONNAIRE_STORAGE_KEY)).toBe(false);
+	});
+});
 
 describe('completed questionnaire identity', () => {
 	afterEach(() => vi.unstubAllGlobals());

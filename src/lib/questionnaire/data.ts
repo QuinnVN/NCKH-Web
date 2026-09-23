@@ -484,10 +484,20 @@ function parseDraft(value: unknown): QuestionnaireDraft | null {
 export function readSavedQuestionnaire(): QuestionnaireDraft | null {
 	if (typeof window === 'undefined') return null;
 	try {
+		const raw = window.localStorage.getItem(QUESTIONNAIRE_STORAGE_KEY);
+		if (raw) {
+			const draft = parseDraft(JSON.parse(raw));
+			if (draft) return draft;
+		}
+	} catch {
+		// A legacy session draft may still be available.
+	}
+	try {
 		const raw = window.sessionStorage.getItem(QUESTIONNAIRE_STORAGE_KEY);
 		if (!raw) return null;
-		const parsed: unknown = JSON.parse(raw);
-		return parseDraft(parsed);
+		const draft = parseDraft(JSON.parse(raw));
+		if (draft) writeSavedQuestionnaire(draft);
+		return draft;
 	} catch {
 		return null;
 	}
@@ -496,19 +506,29 @@ export function readSavedQuestionnaire(): QuestionnaireDraft | null {
 export function writeSavedQuestionnaire(draft: QuestionnaireDraft): boolean {
 	if (typeof window === 'undefined') return false;
 	try {
-		window.sessionStorage.setItem(QUESTIONNAIRE_STORAGE_KEY, JSON.stringify(draft));
-		return true;
+		window.localStorage.setItem(QUESTIONNAIRE_STORAGE_KEY, JSON.stringify(draft));
 	} catch {
 		return false;
 	}
+	try {
+		window.sessionStorage.removeItem(QUESTIONNAIRE_STORAGE_KEY);
+	} catch {
+		// The draft is already saved in local storage.
+	}
+	return true;
 }
 
 export function clearSavedQuestionnaire(): void {
 	if (typeof window === 'undefined') return;
 	try {
+		window.localStorage.removeItem(QUESTIONNAIRE_STORAGE_KEY);
+	} catch {
+		// Storage can be disabled by privacy settings.
+	}
+	try {
 		window.sessionStorage.removeItem(QUESTIONNAIRE_STORAGE_KEY);
 	} catch {
-		// Storage can be disabled by privacy settings; completion should still work in memory.
+		// Clear any legacy session draft when storage is available.
 	}
 }
 
