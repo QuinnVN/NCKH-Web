@@ -1,6 +1,7 @@
 import type { Document } from 'mongodb';
 import type { QuestionnaireSubmission, StageId } from '$lib/questionnaire';
 import {
+	behaviourComparisonIconIds,
 	type BehaviourComparisonFinding,
 	type BehaviourComparisonKind,
 	type FinalAssessment,
@@ -69,12 +70,17 @@ function parseBehaviourComparison(value: unknown): FinalAssessment['behaviourCom
 		)
 			return null;
 		ids.add(finding.id);
+		const icon = behaviourComparisonIconIds.find((id) => id === finding.icon);
 		findings.push({
 			id: finding.id,
 			kind: finding.kind as BehaviourComparisonKind,
+			...(icon ? { icon } : {}),
 			title: finding.title,
 			questionnaireResult: finding.questionnaireResult,
 			vrEvidence: finding.vrEvidence,
+			...(finding.kind !== 'confirmed' && isNonEmptyString(finding.remedy)
+				? { remedy: finding.remedy.trim() }
+				: {}),
 			summary: finding.summary
 		});
 	}
@@ -82,7 +88,7 @@ function parseBehaviourComparison(value: unknown): FinalAssessment['behaviourCom
 }
 
 function parseCareerSuggestions(value: unknown): FinalCareerSuggestion[] | null {
-	if (!Array.isArray(value) || value.length < 1 || value.length > 3) return null;
+	if (!Array.isArray(value) || value.length < 1) return null;
 	const suggestions: FinalCareerSuggestion[] = [];
 	const ids = new Set<string>();
 	for (const suggestion of value) {

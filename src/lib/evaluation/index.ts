@@ -58,12 +58,27 @@ export const placeholderFinalEvaluation: FinalUserEvaluation = {
 
 export type BehaviourComparisonKind = 'confirmed' | 'emerging' | 'development';
 
+export const behaviourComparisonIconIds = [
+	'analysis',
+	'adaptability',
+	'priority',
+	'communication',
+	'collaboration',
+	'creativity',
+	'resilience',
+	'leadership'
+] as const;
+
+export type BehaviourComparisonIcon = (typeof behaviourComparisonIconIds)[number];
+
 export type BehaviourComparisonFinding = {
 	id: string;
 	kind: BehaviourComparisonKind;
+	icon?: BehaviourComparisonIcon;
 	title: string;
 	questionnaireResult: string;
 	vrEvidence: string;
+	remedy?: string;
 	summary: string;
 };
 
@@ -80,6 +95,7 @@ export const placeholderBehaviourComparison: BehaviourComparisonResult = {
 		{
 			id: 'analytical-thinking',
 			kind: 'confirmed',
+			icon: 'analysis',
 			title: 'Tư duy phân tích',
 			questionnaireResult: 'Bạn tự đánh giá cao khả năng phân tích thông tin trước khi hành động.',
 			vrEvidence: 'Trong VR, bạn kiểm tra dữ kiện chính trước khi chọn thứ tự ưu tiên.',
@@ -88,19 +104,47 @@ export const placeholderBehaviourComparison: BehaviourComparisonResult = {
 		{
 			id: 'adaptability',
 			kind: 'emerging',
+			icon: 'adaptability',
 			title: 'Khả năng thích ứng',
 			questionnaireResult: 'Bạn chưa xem đây là một điểm mạnh nổi bật của mình.',
 			vrEvidence: 'Bạn đổi hướng xử lý phù hợp khi tình huống xuất hiện thông tin mới.',
+			remedy:
+				'Tiếp tục thử xử lý các tình huống mới, rồi ghi lại cách bạn điều chỉnh khi có thêm thông tin.',
 			summary: 'Đây có thể là năng lực bạn chưa nhận ra đầy đủ qua tự đánh giá.'
 		},
 		{
 			id: 'pressure-prioritisation',
 			kind: 'development',
+			icon: 'priority',
 			title: 'Ưu tiên khi chịu áp lực',
 			questionnaireResult:
 				'Bạn cho rằng mình duy trì quyết định ổn định khi thời gian bị giới hạn.',
 			vrEvidence: 'Trong nhiệm vụ dồn dập, bạn mất thêm thời gian để chốt việc cần làm trước.',
+			remedy:
+				'Trước mỗi nhiệm vụ, chọn một việc quan trọng nhất cần làm ngay và kiểm tra lại ưu tiên khi tình huống thay đổi.',
 			summary: 'Bạn nên luyện cách xác định ưu tiên trước khi xử lý các chi tiết còn lại.'
+		},
+		{
+			id: 'clear-communication',
+			kind: 'confirmed',
+			icon: 'communication',
+			title: 'Giao tiếp rõ ràng',
+			questionnaireResult:
+				'Bạn tự đánh giá mình diễn đạt được ý chính khi phối hợp với người khác.',
+			vrEvidence:
+				'Trong VR, bạn tóm tắt thông tin cần thiết trước khi chuyển nhiệm vụ cho đồng đội.',
+			summary: 'Cách trao đổi trong VR phù hợp với điều bạn đã tự đánh giá.'
+		},
+		{
+			id: 'team-collaboration',
+			kind: 'emerging',
+			icon: 'collaboration',
+			title: 'Phối hợp nhóm',
+			questionnaireResult: 'Bạn chưa xem phối hợp nhóm là điểm mạnh nổi bật của mình.',
+			vrEvidence: 'Bạn trao đổi hướng xử lý với đồng đội khi xuất hiện nhiệm vụ mới.',
+			remedy:
+				'Chủ động trao đổi vai trò và bước tiếp theo với đồng đội để phát huy khả năng phối hợp.',
+			summary: 'Hành vi trong VR gợi ý khả năng phối hợp đáng để tiếp tục phát huy.'
 		}
 	]
 };

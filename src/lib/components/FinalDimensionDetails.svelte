@@ -86,16 +86,16 @@
 	}
 </script>
 
-<section class="mt-4 border border-blue bg-[#071020]" aria-labelledby="dimension-details-heading">
+<section class="mt-8 border-t border-white/14 pt-3" aria-labelledby="dimension-details-heading">
 	<button
-		class="flex w-full cursor-pointer items-start justify-between gap-8 border-0 bg-transparent p-[clamp(1.4rem,3vw,2rem)] text-left font-[inherit] text-inherit focus-visible:outline-2 focus-visible:-outline-offset-[.45rem] focus-visible:outline-lime"
+		class="flex w-full cursor-pointer items-start justify-between gap-8 border-0 bg-transparent py-5 text-left font-[inherit] text-inherit focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lime"
 		type="button"
 		aria-expanded={expanded}
 		aria-controls="dimension-details-content"
 		onclick={ontoggle}
 	>
 		<div>
-			<h2 class="m-0 text-[clamp(1.35rem,3vw,1.8rem)]" id="dimension-details-heading">
+			<h2 class="m-0 text-[clamp(1.35rem,3vw,1.8rem)] font-bold" id="dimension-details-heading">
 				Chi tiết từng khía cạnh
 			</h2>
 			<p class="mt-2 mb-0 text-[.85rem] leading-6 text-[#91a0b4]">
@@ -103,9 +103,9 @@
 			</p>
 		</div>
 		<span class="flex flex-none items-center gap-[.8rem]">
-			<span class="m-0 flex-none border border-blue/60 px-[.65rem] py-[.45rem] max-[520px]:hidden"
+			<!-- <span class="m-0 flex-none border border-blue/60 px-[.65rem] py-[.45rem] max-[520px]:hidden"
 				>28 khía cạnh</span
-			>
+			> -->
 			<ChevronDown
 				class={`text-lime transition-transform duration-[160ms] motion-reduce:transition-none ${expanded ? 'rotate-180' : ''}`}
 				size={20}

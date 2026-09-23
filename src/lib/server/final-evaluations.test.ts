@@ -71,6 +71,67 @@ describe('stored final evaluation parser', () => {
 		expect(parseStoredFinalEvaluation(value, submission)).toBeNull();
 	});
 
+	it('accepts a completed result with seven career suggestions', () => {
+		const value = storedEvaluation();
+		value.careerSuggestions = Array.from({ length: 7 }, (_, index) => ({
+			id: `career-${index + 1}`,
+			name: `Nghề ${index + 1}`,
+			compatibilityPercent: 70 - index,
+			description: `Lý do gợi ý nghề ${index + 1}.`
+		}));
+		expect(parseStoredFinalEvaluation(value, submission)?.careerSuggestions).toHaveLength(7);
+	});
+
+	it('keeps distinct card icons when there are more than three findings', () => {
+		const value = storedEvaluation();
+		const baseFinding = value.behaviourComparison.findings[0];
+		const findings = [
+			{ ...baseFinding, icon: 'analysis' },
+			{ ...baseFinding, id: 'teamwork', icon: 'collaboration' },
+			{ ...baseFinding, id: 'ideas', icon: 'creativity' },
+			{ ...baseFinding, id: 'pressure', kind: 'development', icon: 'resilience' }
+		];
+		const parsed = parseStoredFinalEvaluation(
+			{ ...value, behaviourComparison: { ...value.behaviourComparison, findings } },
+			submission
+		);
+		expect(parsed?.behaviourComparison?.findings.map((finding) => finding.icon)).toEqual([
+			'analysis',
+			'collaboration',
+			'creativity',
+			'resilience'
+		]);
+	});
+
+	it('keeps the assessment when an optional card icon is unknown', () => {
+		const value = storedEvaluation();
+		const finding = { ...value.behaviourComparison.findings[0], icon: 'unknown-icon' };
+		const parsed = parseStoredFinalEvaluation(
+			{ ...value, behaviourComparison: { ...value.behaviourComparison, findings: [finding] } },
+			submission
+		);
+		expect(parsed?.behaviourComparison?.findings[0].icon).toBeUndefined();
+	});
+
+	it('keeps remedies for emerging and development cards while accepting older cards without one', () => {
+		const value = storedEvaluation();
+		const baseFinding = value.behaviourComparison.findings[0];
+		const findings = [
+			baseFinding,
+			{ ...baseFinding, id: 'adaptability', kind: 'emerging', remedy: 'Thử cách xử lý mới.' },
+			{ ...baseFinding, id: 'priority', kind: 'development', remedy: 'Luyện đặt ưu tiên.' }
+		];
+		const parsed = parseStoredFinalEvaluation(
+			{ ...value, behaviourComparison: { ...value.behaviourComparison, findings } },
+			submission
+		);
+		expect(parsed?.behaviourComparison?.findings.map((finding) => finding.remedy)).toEqual([
+			undefined,
+			'Thử cách xử lý mới.',
+			'Luyện đặt ưu tiên.'
+		]);
+	});
+
 	it('rejects an incomplete result so the page can fall back to the initial assessment', () => {
 		const value = storedEvaluation();
 		delete value.dimensionLevels.D1;

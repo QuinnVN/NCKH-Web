@@ -41,4 +41,25 @@ describe('final career suggestions', () => {
 		expect(body).not.toContain('role="img"');
 		expect(body).not.toContain('tương thích');
 	});
+
+	it('shows every career when the final assessment contains more than three', () => {
+		const extraSuggestions = Array.from({ length: 4 }, (_, index) => ({
+			id: `extra-${index}`,
+			name: `Nghề thêm ${index + 1}`,
+			compatibilityPercent: 70 - index,
+			description: `Lý do nghề thêm ${index + 1}.`
+		}));
+		const { body } = render(FinalCareerSuggestions, {
+			props: { suggestions: [...suggestions, ...extraSuggestions] }
+		});
+		expect(body).toContain('6 nghề cũng phù hợp');
+		for (const suggestion of extraSuggestions) expect(body).toContain(suggestion.name);
+	});
+
+	it('places the highest compatibility career in the primary panel', () => {
+		const { body } = render(FinalCareerSuggestions, {
+			props: { suggestions: [suggestions[1], suggestions[0], suggestions[2]] }
+		});
+		expect(body).toContain('aria-labelledby="primary-career-doctor"');
+	});
 });

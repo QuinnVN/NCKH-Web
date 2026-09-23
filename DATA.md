@@ -8,40 +8,40 @@ Khi phân tích thành công, API trả về một đối tượng `FinalAssessm
 
 ```json
 {
-  "version": 1,
-  "participantName": "Nguyễn Văn An",
-  "participantEmail": "an.nguyen@example.com",
-  "completedAt": "2026-09-22T10:30:00.000Z",
-  "stageAssessments": {
-    "D": "...",
-    "E": "...",
-    "S": "...",
-    "M": "...",
-    "A": "...",
-    "P": "..."
-  },
-  "dimensionLevels": {
-    "D1": "fairly-compatible",
-    "D2": "well-compatible",
-    "...": "...",
-    "P6": "neutral"
-  },
-  "behaviourComparison": {
-    "experienceName": "Bác sĩ cấp cứu",
-    "findings": []
-  },
-  "careerSuggestions": [],
-  "finalEvaluation": {
-    "experienceName": "Bác sĩ cấp cứu",
-    "headline": "...",
-    "workStyle": "...",
-    "benefit": "...",
-    "challenge": "...",
-    "improvement": "...",
-    "strengthLabel": "...",
-    "developmentLabel": "...",
-    "evidence": "..."
-  }
+	"version": 1,
+	"participantName": "Nguyễn Văn An",
+	"participantEmail": "an.nguyen@example.com",
+	"completedAt": "2026-09-22T10:30:00.000Z",
+	"stageAssessments": {
+		"D": "...",
+		"E": "...",
+		"S": "...",
+		"M": "...",
+		"A": "...",
+		"P": "..."
+	},
+	"dimensionLevels": {
+		"D1": "fairly-compatible",
+		"D2": "well-compatible",
+		"...": "...",
+		"P6": "neutral"
+	},
+	"behaviourComparison": {
+		"experienceName": "Bác sĩ cấp cứu",
+		"findings": []
+	},
+	"careerSuggestions": [],
+	"finalEvaluation": {
+		"experienceName": "Bác sĩ cấp cứu",
+		"headline": "...",
+		"workStyle": "...",
+		"benefit": "...",
+		"challenge": "...",
+		"improvement": "...",
+		"strengthLabel": "...",
+		"developmentLabel": "...",
+		"evidence": "..."
+	}
 }
 ```
 
@@ -51,13 +51,13 @@ Khi phân tích thành công, API trả về một đối tượng `FinalAssessm
 
 `stageAssessments` chứa đủ sáu khóa `D`, `E`, `S`, `M`, `A`, `P`.
 
-| Mã | Nhóm | Nội dung AI cần trả về |
-| --- | --- | --- |
-| `D` | Mong muốn | Điều người tham gia coi trọng trong công việc và môi trường phù hợp. |
-| `E` | Chuyên môn | Các kỹ năng đang thể hiện và kỹ năng nên tiếp tục rèn. |
-| `S` | Vai trò xã hội | Cách phối hợp, đóng góp hoặc làm việc cùng người khác. |
-| `M` | Tư duy | Cách xử lý thông tin, phân tích và ra quyết định. |
-| `A` | Khả năng thích ứng | Cách phản ứng khi thông tin, yêu cầu hoặc bối cảnh thay đổi. |
+| Mã  | Nhóm                | Nội dung AI cần trả về                                                  |
+| --- | ------------------- | ----------------------------------------------------------------------- |
+| `D` | Mong muốn           | Điều người tham gia coi trọng trong công việc và môi trường phù hợp.    |
+| `E` | Chuyên môn          | Các kỹ năng đang thể hiện và kỹ năng nên tiếp tục rèn.                  |
+| `S` | Vai trò xã hội      | Cách phối hợp, đóng góp hoặc làm việc cùng người khác.                  |
+| `M` | Tư duy              | Cách xử lý thông tin, phân tích và ra quyết định.                       |
+| `A` | Khả năng thích ứng  | Cách phản ứng khi thông tin, yêu cầu hoặc bối cảnh thay đổi.            |
 | `P` | Phản ứng với áp lực | Cách duy trì hiệu quả khi có áp lực thời gian hoặc nhiều việc cùng lúc. |
 
 Mỗi giá trị là một đoạn ngắn, nêu điểm nổi bật, căn cứ quan sát hoặc điểm bảng hỏi, và một hướng phát triển nếu có. Với `D`, mức cao hoặc thấp chỉ nói về mức độ coi trọng, không gán là tốt hay xấu.
@@ -66,19 +66,19 @@ Mỗi giá trị là một đoạn ngắn, nêu điểm nổi bật, căn cứ q
 
 `dimensionLevels` cần có đủ 28 mã sau:
 
-| Nhóm | Mã khía cạnh |
-| --- | --- |
-| D | `D1`, `D2`, `D3`, `D4`, `D5`, `D6` |
-| E | `E1`, `E2`, `E3`, `E4`, `E5`, `E6` |
-| S | `S1`, `S2`, `S3` |
-| M | `M1`, `M2`, `M3` |
-| A | `A1`, `A2`, `A3`, `A4` |
-| P | `P1`, `P2`, `P3`, `P4`, `P5`, `P6` |
+| Nhóm | Mã khía cạnh                       |
+| ---- | ---------------------------------- |
+| D    | `D1`, `D2`, `D3`, `D4`, `D5`, `D6` |
+| E    | `E1`, `E2`, `E3`, `E4`, `E5`, `E6` |
+| S    | `S1`, `S2`, `S3`                   |
+| M    | `M1`, `M2`, `M3`                   |
+| A    | `A1`, `A2`, `A3`, `A4`             |
+| P    | `P1`, `P2`, `P3`, `P4`, `P5`, `P6` |
 
 Mỗi mã chỉ nhận một trong năm giá trị sau:
 
 ```ts
-'not-compatible' | 'low-compatible' | 'neutral' | 'fairly-compatible' | 'well-compatible'
+'not-compatible' | 'low-compatible' | 'neutral' | 'fairly-compatible' | 'well-compatible';
 ```
 
 Frontend tự hiển thị nhãn tiếng Việt và phần diễn giải cho từng mức. Backend không cần trả lại nội dung diễn giải 28 khía cạnh.
@@ -89,30 +89,32 @@ Frontend tự hiển thị nhãn tiếng Việt và phần diễn giải cho t�
 
 ```json
 {
-  "experienceName": "Bác sĩ cấp cứu",
-  "findings": [
-    {
-      "id": "analytical-thinking",
-      "kind": "confirmed",
-      "title": "Tư duy phân tích",
-      "questionnaireResult": "Bạn tự đánh giá cao khả năng phân tích thông tin trước khi hành động.",
-      "vrEvidence": "Trong VR, bạn kiểm tra dữ kiện chính trước khi chọn thứ tự ưu tiên.",
-      "summary": "Kết quả VR củng cố điểm mạnh đã thể hiện trong bảng câu hỏi."
-    }
-  ]
+	"experienceName": "Bác sĩ cấp cứu",
+	"findings": [
+		{
+			"id": "analytical-thinking",
+			"kind": "confirmed",
+			"title": "Tư duy phân tích",
+			"questionnaireResult": "Bạn tự đánh giá cao khả năng phân tích thông tin trước khi hành động.",
+			"vrEvidence": "Trong VR, bạn kiểm tra dữ kiện chính trước khi chọn thứ tự ưu tiên.",
+			"summary": "Kết quả VR củng cố điểm mạnh đã thể hiện trong bảng câu hỏi."
+		}
+	]
 }
 ```
 
 Mỗi phần tử trong `findings` cần có:
 
-| Trường | Yêu cầu |
-| --- | --- |
-| `id` | Mã duy nhất, ổn định trong cùng một kết quả. |
-| `kind` | `confirmed`, `emerging` hoặc `development`. |
-| `title` | Tên ngắn của hành vi hoặc năng lực. |
-| `questionnaireResult` | Kết quả tự đánh giá liên quan. |
-| `vrEvidence` | Hành vi quan sát được trong VR. |
-| `summary` | Kết luận từ việc đối chiếu hai nguồn. |
+| Trường                | Yêu cầu                                                                                                                                                                                                                         |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`                  | Mã duy nhất, ổn định trong cùng một kết quả.                                                                                                                                                                                    |
+| `kind`                | `confirmed`, `emerging` hoặc `development`.                                                                                                                                                                                     |
+| `icon`                | Tùy chọn. Biểu tượng phù hợp với năng lực: `analysis`, `adaptability`, `priority`, `communication`, `collaboration`, `creativity`, `resilience`, `leadership`. Nếu bỏ trống hoặc không hợp lệ, thẻ dùng biểu tượng theo `kind`. |
+| `title`               | Tên ngắn của hành vi hoặc năng lực.                                                                                                                                                                                             |
+| `questionnaireResult` | Kết quả tự đánh giá liên quan.                                                                                                                                                                                                  |
+| `vrEvidence`          | Hành vi quan sát được trong VR.                                                                                                                                                                                                 |
+| `remedy`              | Cách khắc phục hoặc phát huy năng lực, hiển thị ở mặt sau thẻ `emerging` và `development`. Nên cung cấp cho hai loại thẻ này; kết quả cũ thiếu trường vẫn đọc được.                                                             |
+| `summary`             | Kết luận từ việc đối chiếu hai nguồn.                                                                                                                                                                                           |
 
 Ý nghĩa `kind`:
 
@@ -124,41 +126,41 @@ Chỉ trả về phát hiện có căn cứ. Không cần tạo đủ ba loại.
 
 ## Gợi ý nghề nghiệp
 
-`careerSuggestions` có từ một đến ba nghề, đã sắp xếp từ phù hợp nhất đến thấp hơn.
+`careerSuggestions` có ít nhất một nghề. Frontend xếp nghề có `compatibilityPercent` cao nhất ở vị trí chính và hiển thị tất cả nghề còn lại ở phần gợi ý.
 
 ```json
 [
-  {
-    "id": "doctor",
-    "name": "Bác sĩ",
-    "compatibilityPercent": 86,
-    "description": "Kết quả tự đánh giá và hành vi trong VR cho thấy bạn có xu hướng kiểm tra dữ kiện trước khi chọn ưu tiên. Đây là cách làm phù hợp với các nhiệm vụ cần đánh giá tình huống và quyết định có căn cứ."
-  }
+	{
+		"id": "doctor",
+		"name": "Bác sĩ",
+		"compatibilityPercent": 86,
+		"description": "Kết quả tự đánh giá và hành vi trong VR cho thấy bạn có xu hướng kiểm tra dữ kiện trước khi chọn ưu tiên. Đây là cách làm phù hợp với các nhiệm vụ cần đánh giá tình huống và quyết định có căn cứ."
+	}
 ]
 ```
 
-| Trường | Yêu cầu |
-| --- | --- |
-| `id` | Mã nghề duy nhất. |
-| `name` | Tên nghề bằng tiếng Việt. |
+| Trường                 | Yêu cầu                                                                                                      |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `id`                   | Mã nghề duy nhất.                                                                                            |
+| `name`                 | Tên nghề bằng tiếng Việt.                                                                                    |
 | `compatibilityPercent` | Số nguyên từ 0 đến 100. Frontend hiện không hiển thị trường này, nhưng cần lưu để dùng cho các màn hình sau. |
-| `description` | Lý do gợi ý, liên hệ kết quả DESMAP với bằng chứng VR và yêu cầu nghề. |
+| `description`          | Lý do gợi ý, liên hệ kết quả DESMAP với bằng chứng VR và yêu cầu nghề.                                       |
 
 ## Kết luận cuối cho người tham gia
 
 `finalEvaluation` cấp nội dung cho khối "Đánh giá cuối cùng" ở đầu trang.
 
-| Trường | Nội dung cần trả về |
-| --- | --- |
-| `experienceName` | Tên trải nghiệm VR đã hoàn thành. |
-| `headline` | Kết luận ngắn, dễ hiểu, không gắn nhãn tính cách. |
-| `workStyle` | Cách người tham gia đã xử lý nhiệm vụ. |
-| `benefit` | Cách làm đó hỗ trợ công việc hoặc tình huống tương tự. |
-| `challenge` | Điểm dễ gặp khó, chỉ nêu khi có căn cứ. |
-| `improvement` | Một hành động thực hành cụ thể có thể làm tiếp. |
-| `strengthLabel` | Tên ngắn của điểm mạnh nên phát huy. |
-| `developmentLabel` | Tên ngắn của điểm cần luyện. |
-| `evidence` | Tóm tắt ngắn bằng chứng hành vi trong VR. |
+| Trường             | Nội dung cần trả về                                    |
+| ------------------ | ------------------------------------------------------ |
+| `experienceName`   | Tên trải nghiệm VR đã hoàn thành.                      |
+| `headline`         | Kết luận ngắn, dễ hiểu, không gắn nhãn tính cách.      |
+| `workStyle`        | Cách người tham gia đã xử lý nhiệm vụ.                 |
+| `benefit`          | Cách làm đó hỗ trợ công việc hoặc tình huống tương tự. |
+| `challenge`        | Điểm dễ gặp khó, chỉ nêu khi có căn cứ.                |
+| `improvement`      | Một hành động thực hành cụ thể có thể làm tiếp.        |
+| `strengthLabel`    | Tên ngắn của điểm mạnh nên phát huy.                   |
+| `developmentLabel` | Tên ngắn của điểm cần luyện.                           |
+| `evidence`         | Tóm tắt ngắn bằng chứng hành vi trong VR.              |
 
 ## Quy tắc kiểm tra phản hồi
 

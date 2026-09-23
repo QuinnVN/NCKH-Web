@@ -88,12 +88,12 @@
 		radial-gradient(circle at 82% 8%, rgb(37 99 235 / 15%), transparent 27%), var(--color-bg);
 }
 
-@utility final-radar-gradient {
-	background: radial-gradient(circle at 32% 48%, rgb(37 99 235 / 12%), transparent 42%), #071020;
-}
-
-@utility final-careers-gradient {
-	background: radial-gradient(circle at 90% 8%, rgb(188 255 99 / 8%), transparent 30%), #071020;
+@utility final-evaluation-page-gradient {
+	background:
+		radial-gradient(ellipse at 82% 9%, rgb(37 99 235 / 17%), transparent 34%),
+		radial-gradient(ellipse at 14% 53%, rgb(34 112 143 / 12%), transparent 38%),
+		radial-gradient(ellipse at 84% 91%, rgb(67 71 156 / 12%), transparent 36%),
+		linear-gradient(180deg, #050912, #08111b 52%, #050912);
 }
 
 @layer base {

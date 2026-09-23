@@ -26,9 +26,12 @@
 		type InitialAssessmentResponse
 	} from '$lib/assessment';
 	import {
+		buildCompletionPayload,
+		desmapQuestions,
 		readCompletionPayload,
 		readQuestionnaireSyncStatus,
 		uploadQuestionnaireSubmission,
+		type QuestionnaireAnswers,
 		type QuestionnaireSubmission,
 		type QuestionnaireSyncStatus
 	} from '$lib/questionnaire';
@@ -46,13 +49,7 @@
 	let requestInFlight = $state(false);
 	let syncStatus = $state<QuestionnaireSyncStatus | null>(null);
 	let syncInFlight = $state(false);
-	type FinalSection = 'overview' | 'comparison' | 'dimensions' | 'careers';
-	let expandedFinalSections = $state<Record<FinalSection, boolean>>({
-		overview: false,
-		comparison: true,
-		dimensions: false,
-		careers: true
-	});
+	let dimensionsExpanded = $state(false);
 	let finalAssessment = $derived(
 		data.finalAssessment ??
 			(data.previewFinal && payload ? createPreviewFinalAssessment(payload) : null)
@@ -98,6 +95,34 @@
 					compatibilityPercent: 73,
 					description:
 						'Tư duy phân tích và thói quen kiểm tra dữ kiện là nền tảng phù hợp để bạn tiếp tục khám phá ngành luật.'
+				},
+				{
+					id: 'engineer',
+					name: 'Kỹ sư',
+					compatibilityPercent: 70,
+					description:
+						'Bạn có thói quen phân tích vấn đề theo từng bước và kiểm tra kết quả trước khi quyết định.'
+				},
+				{
+					id: 'researcher',
+					name: 'Nhà nghiên cứu',
+					compatibilityPercent: 68,
+					description:
+						'Sự tò mò và cách tìm căn cứ trước khi kết luận có thể hữu ích trong môi trường nghiên cứu.'
+				},
+				{
+					id: 'designer',
+					name: 'Nhà thiết kế',
+					compatibilityPercent: 65,
+					description:
+						'Bạn có thể thử những công việc cần quan sát nhu cầu của người dùng và điều chỉnh giải pháp.'
+				},
+				{
+					id: 'analyst',
+					name: 'Chuyên viên phân tích dữ liệu',
+					compatibilityPercent: 62,
+					description:
+						'Việc đọc dữ kiện, nhận ra điểm bất thường và trình bày kết luận là những năng lực đáng để khám phá thêm.'
 				}
 			]
 		};
@@ -140,6 +165,18 @@
 
 	onMount(() => {
 		payload = readCompletionPayload();
+		if (!payload && data.previewFinal) {
+			payload = buildCompletionPayload({
+				answers: Object.fromEntries(
+					desmapQuestions.map((question) => [question.id, 'B'])
+				) as QuestionnaireAnswers,
+				careerInterests: ['health-wellbeing'],
+				startedAt: new Date().toISOString(),
+				participant: { name: 'Bản xem trước', email: 'preview@example.com' }
+			});
+			viewState = 'success';
+			return;
+		}
 		if (!payload) viewState = 'empty';
 		else {
 			syncStatus = readQuestionnaireSyncStatus(payload.assessmentId);
@@ -152,10 +189,6 @@
 	function showNotice(message: string) {
 		notice = message;
 		window.setTimeout(() => (notice = ''), 2400);
-	}
-
-	function toggleFinalSection(section: FinalSection) {
-		expandedFinalSections[section] = !expandedFinalSections[section];
 	}
 
 	function saveJson() {
@@ -207,27 +240,29 @@
 </svelte:head>
 
 <Header showBack />
-<main class="min-h-dvh py-[clamp(2.2rem,5vw,5rem)] pb-16 text-[#f7f9fb] evaluation-page-gradient">
+<main
+	class={[
+		'min-h-dvh py-[clamp(2.2rem,5vw,5rem)] pb-16 text-[#f7f9fb]',
+		pageState === 'final' ? 'final-evaluation-page-gradient' : 'evaluation-page-gradient'
+	]}
+>
 	<div class="mx-auto w-[min(90rem,calc(100%_-_4rem))] max-[640px]:w-[calc(100%_-_1.4rem)]">
-		<section class="border-b border-white/14 py-12">
-			<p class="m-0 text-[.68rem] font-[760] tracking-[.16em] text-lime uppercase">
-				{pageState === 'final' ? '03 / ĐÁNH GIÁ CUỐI CÙNG' : '02 / ĐỐI CHIẾU NGHỀ NGHIỆP BAN ĐẦU'}
-			</p>
-			<h1
-				class="mt-3 mb-4 max-w-[820px] text-[clamp(2.5rem,7vw,5.8rem)] leading-[.92] font-[760] tracking-[-.065em]"
-			>
-				{pageState === 'final' ? 'Hồ sơ DESMAP cuối cùng' : 'Hồ sơ tự báo cáo'}
-			</h1>
-			<p class="m-0 max-w-[760px] text-[1.05rem] leading-[1.55] text-[#91a0b4]">
-				{#if pageState === 'final'}
-					Kết quả này kết hợp câu trả lời trong bảng câu hỏi với bằng chứng quan sát từ trải nghiệm
-					VR.
-				{:else}
+		{#if pageState !== 'final'}
+			<section class="border-b border-white/14 py-12">
+				<p class="m-0 text-[.68rem] font-[760] tracking-[.16em] text-lime uppercase">
+					02 / ĐỐI CHIẾU NGHỀ NGHIỆP BAN ĐẦU
+				</p>
+				<h1
+					class="mt-3 mb-4 max-w-[820px] text-[clamp(2.5rem,7vw,5.8rem)] leading-[.92] font-[760] tracking-[-.065em]"
+				>
+					Hồ sơ tự báo cáo
+				</h1>
+				<p class="m-0 max-w-[760px] text-[1.05rem] leading-[1.55] text-[#91a0b4]">
 					Các phần trăm là kết quả đối chiếu tạm thời từ câu trả lời của bạn. Đây không phải khuyến
 					nghị nghề nghiệp hay kết luận cuối cùng.
-				{/if}
-			</p>
-		</section>
+				</p>
+			</section>
+		{/if}
 
 		{#if syncStatus?.status === 'pending'}
 			<p class="sr-only" aria-live="polite" role="status">Đang đồng bộ kết quả lên máy chủ.</p>
@@ -386,35 +421,60 @@
 					: `Đã có kết quả đối chiếu cho ${rankedResults.length} nghề.`}
 			</p>
 			{#if pageState === 'final' && finalAssessment}
-				<div class="mt-3" aria-label="Kết quả đánh giá cuối cùng">
-					<FinalDesmapRadar
-						scores={payload.scores}
-						assessments={finalAssessment.stageAssessments}
-						expanded={expandedFinalSections.overview}
-						ontoggle={() => toggleFinalSection('overview')}
+				<div class="mx-auto max-w-[82rem]" aria-label="Kết quả đánh giá cuối cùng">
+					<FinalUserEvaluation
+						evaluation={finalAssessment.finalEvaluation ?? placeholderFinalEvaluation}
 					/>
+					<nav
+						class="sticky top-[4.15rem] z-20 -mx-3 flex [scrollbar-width:none] gap-1 overflow-x-auto border-y border-white/14 bg-[#050b17]/95 px-3 py-3 text-[.75rem] backdrop-blur-sm min-[760px]:gap-3 min-[760px]:text-[.82rem] min-[761px]:top-[4.5rem] [&::-webkit-scrollbar]:hidden"
+						aria-label="Các phần trong đánh giá cuối cùng"
+					>
+						{#if finalAssessment.careerSuggestions?.length}
+							<a
+								class="shrink-0 px-2 py-2 text-white/80 no-underline hover:text-lime min-[760px]:px-3"
+								href="#goi-y-nghe">Gợi ý nghề</a
+							>
+						{/if}
+						<a
+							class="shrink-0 px-2 py-2 text-white/80 no-underline hover:text-lime min-[760px]:px-3"
+							href="#doi-chieu-hanh-vi">Đối chiếu hành vi</a
+						>
+						<a
+							class="shrink-0 px-2 py-2 text-white/80 no-underline hover:text-lime min-[760px]:px-3"
+							href="#phan-tich-desmap">Phân tích DESMAP</a
+						>
+					</nav>
+					{#if finalAssessment.careerSuggestions?.length}
+						<div
+							id="goi-y-nghe"
+							class="scroll-mt-36 border-b border-white/14 py-[clamp(2.5rem,5vw,4.5rem)]"
+						>
+							<FinalCareerSuggestions suggestions={finalAssessment.careerSuggestions} />
+						</div>
+					{/if}
+					<div
+						id="doi-chieu-hanh-vi"
+						class="scroll-mt-36 border-b border-white/14 py-[clamp(2.5rem,5vw,4.5rem)]"
+					>
+						<FinalBehaviourComparison
+							comparison={finalAssessment.behaviourComparison ?? placeholderBehaviourComparison}
+						/>
+					</div>
+					<div id="phan-tich-desmap" class="scroll-mt-36 py-[clamp(2.5rem,5vw,4.5rem)]">
+						<div class="min-w-0">
+							<FinalDesmapRadar
+								scores={payload.scores}
+								assessments={finalAssessment.stageAssessments}
+							/>
+							<FinalDimensionDetails
+								scores={payload.scores}
+								levels={finalAssessment.dimensionLevels}
+								expanded={dimensionsExpanded}
+								ontoggle={() => (dimensionsExpanded = !dimensionsExpanded)}
+							/>
+						</div>
+					</div>
 				</div>
-				<FinalBehaviourComparison
-					comparison={finalAssessment.behaviourComparison ?? placeholderBehaviourComparison}
-					expanded={expandedFinalSections.comparison}
-					ontoggle={() => toggleFinalSection('comparison')}
-				/>
-				<FinalDimensionDetails
-					scores={payload.scores}
-					levels={finalAssessment.dimensionLevels}
-					expanded={expandedFinalSections.dimensions}
-					ontoggle={() => toggleFinalSection('dimensions')}
-				/>
-				{#if finalAssessment.careerSuggestions?.length}
-					<FinalCareerSuggestions
-						suggestions={finalAssessment.careerSuggestions}
-						expanded={expandedFinalSections.careers}
-						ontoggle={() => toggleFinalSection('careers')}
-					/>
-				{/if}
-				<FinalUserEvaluation
-					evaluation={finalAssessment.finalEvaluation ?? placeholderFinalEvaluation}
-				/>
 			{:else}
 				<section
 					class="mt-3 grid gap-4 min-[850px]:grid-cols-[1.15fr_.85fr]"
@@ -425,13 +485,13 @@
 				</section>
 			{/if}
 			<section
-				class="mt-4 flex flex-wrap items-center justify-between gap-5 border border-blue bg-[#071020] p-6"
+				class={`flex flex-wrap items-center justify-between gap-5 ${pageState === 'final' ? 'mx-auto max-w-[82rem] border-t border-white/14 py-8' : 'mt-4 border border-blue bg-[#071020] p-6'}`}
 			>
 				<div>
 					{#if pageState === 'final'}
 						<h2 class="mt-0 mb-1 text-lg font-bold">Đánh giá đã hoàn tất</h2>
 						<p class="m-0 max-w-[34rem] text-[.83rem] text-[#91a0b4]">
-							Bạn có thể xem từng khía cạnh DESMAP trên biểu đồ hoặc lưu toàn bộ kết quả.
+							Bạn có thể quay lại từng phần ở trên hoặc tải dữ liệu đánh giá.
 						</p>
 					{:else if data.initialAssessmentMode === 'ai'}
 						<h2 class="mt-0 mb-1 text-lg font-bold">Bước tiếp theo</h2>
@@ -465,14 +525,14 @@
 							Khám phá {target.title}<ArrowRight class="size-4" aria-hidden="true" />
 						</a>
 					{/if}
-					<button
-						class="cursor-pointer border-0 bg-transparent text-blue focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-lime"
+					<!-- <button
+						class="cursor-pointer border-0 bg-transparent text-lime focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-lime"
 						type="button"
 						onclick={saveJson}
 					>
 						<Download class="inline size-4" aria-hidden="true" /> Tải JSON
-					</button>
-					{#if pageState === 'initial'}
+					</button> -->
+					<!-- {#if pageState === 'initial'}
 						<button
 							class="cursor-pointer border-0 bg-transparent text-blue focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-lime"
 							type="button"
@@ -480,7 +540,7 @@
 						>
 							{copied ? 'Đã sao chép' : 'Sao chép tóm tắt'}
 						</button>
-					{/if}
+					{/if} -->
 				</div>
 			</section>
 		{/if}

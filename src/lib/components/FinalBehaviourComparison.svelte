@@ -1,213 +1,395 @@
 <script lang="ts">
-	import { ArrowDown, ChevronDown, CircleCheck, Eye, TrendingUp } from '@lucide/svelte';
+	import {
+		ArrowLeft,
+		ArrowRight,
+		BrainCircuit,
+		CircleCheck,
+		ClipboardList,
+		Compass,
+		Eye,
+		Glasses,
+		Lightbulb,
+		ListChecks,
+		MessageCircle,
+		RefreshCw,
+		RotateCcw,
+		Shield,
+		TrendingUp,
+		Users
+	} from '@lucide/svelte';
+	import { untrack } from 'svelte';
 	import { prefersReducedMotion } from 'svelte/motion';
-	import { slide } from 'svelte/transition';
+	import { carouselStops } from './carousel-stops';
 	import type {
-		BehaviourComparisonFinding,
+		BehaviourComparisonIcon,
 		BehaviourComparisonKind,
 		BehaviourComparisonResult
 	} from '$lib/evaluation';
 
-	let {
-		comparison,
-		expanded = true,
-		ontoggle = () => undefined
-	}: {
-		comparison: BehaviourComparisonResult;
-		expanded?: boolean;
-		ontoggle?: () => void;
-	} = $props();
+	let { comparison }: { comparison: BehaviourComparisonResult } = $props();
+	let flippedIds = $state<string[]>([]);
+	let track: HTMLDivElement | undefined;
+	let activeIndex = $state(0);
+	let hasOverflow = $state(false);
+	let scrollStops = $state<number[]>([0]);
+	let navigationTarget: number | null = null;
 
-	type KindCopy = {
-		label: string;
-		description: string;
-		accentClass: string;
-		glowClass: string;
-		panelClass: string;
-		numberClass: string;
-		conclusionClass: string;
-		Icon: typeof CircleCheck;
+	const iconCopy: Record<BehaviourComparisonIcon, typeof CircleCheck> = {
+		analysis: BrainCircuit,
+		adaptability: RefreshCw,
+		priority: ListChecks,
+		communication: MessageCircle,
+		collaboration: Users,
+		creativity: Lightbulb,
+		resilience: Shield,
+		leadership: Compass
 	};
 
-	const kindCopy: Record<BehaviourComparisonKind, KindCopy> = {
+	const kindCopy: Record<
+		BehaviourComparisonKind,
+		{
+			label: string;
+			cardType: string;
+			symbol: string;
+			frame: string;
+			glow: string;
+			face: string;
+			ink: string;
+			muted: string;
+			art: string;
+			back: string;
+			backAccent: string;
+			scrollbar: string;
+			Icon: typeof CircleCheck;
+		}
+	> = {
 		confirmed: {
 			label: 'Điểm mạnh được xác nhận',
-			description: 'Kết quả test và hành vi trong VR cùng cho thấy điểm mạnh này.',
-			accentClass: 'border-lime bg-lime text-[#071006]',
-			glowClass: 'shadow-[0_0_1.5rem_rgb(188_255_99_/.25)]',
-			panelClass:
-				'border-lime/70 bg-[radial-gradient(circle_at_92%_0%,rgb(188_255_99_/.2),transparent_34%),linear-gradient(105deg,rgb(188_255_99_/.1),rgb(5_11_22)_34%)] shadow-[0_0_2.25rem_rgb(188_255_99_/.08)]',
-			numberClass: 'text-lime/20',
-			conclusionClass: 'border-lime/45 bg-lime/12 text-[#e8ffd2]',
+			cardType: 'Sở trường',
+			symbol: '✚',
+			frame: 'border-[#82e884]',
+			glow: 'hover:shadow-[0_0_0_1px_#82e884,0_0_24px_#82e88499,0_18px_42px_rgb(0_0_0_/.28)]',
+			face: 'bg-[#c8f593]',
+			ink: 'text-[#173a23]',
+			muted: 'text-[#315438]',
+			art: 'bg-[radial-gradient(circle_at_50%_42%,#f4ffd8_0%,#9ee989_52%,#45ba90_100%)]',
+			back: 'bg-[#123b31]',
+			backAccent: 'text-[#c8f593]',
+			scrollbar: '[scrollbar-color:#82e884_#123b31] [&::-webkit-scrollbar-thumb]:bg-[#82e884]',
 			Icon: CircleCheck
 		},
 		emerging: {
 			label: 'Điểm mạnh tiềm ẩn',
-			description: 'Hành vi trong VR tốt hơn mức bạn tự đánh giá.',
-			accentClass: 'border-[#65dfff] bg-[#65dfff] text-[#03131a]',
-			glowClass: 'shadow-[0_0_1.5rem_rgb(101_223_255_/.25)]',
-			panelClass:
-				'border-[#65dfff]/70 bg-[radial-gradient(circle_at_92%_0%,rgb(101_223_255_/.2),transparent_34%),linear-gradient(105deg,rgb(37_99_235_/.16),rgb(5_11_22)_34%)] shadow-[0_0_2.25rem_rgb(101_223_255_/.08)]',
-			numberClass: 'text-[#65dfff]/20',
-			conclusionClass: 'border-[#65dfff]/45 bg-[#65dfff]/12 text-[#dffaff]',
+			cardType: 'Tiềm năng',
+			symbol: '✦',
+			frame: 'border-[#70dfff]',
+			glow: 'hover:shadow-[0_0_0_1px_#70dfff,0_0_24px_#70dfff99,0_18px_42px_rgb(0_0_0_/.28)]',
+			face: 'bg-[#a9e9f9]',
+			ink: 'text-[#12375d]',
+			muted: 'text-[#315975]',
+			art: 'bg-[radial-gradient(circle_at_50%_42%,#f0fdff_0%,#8cddf1_48%,#6d8bdf_100%)]',
+			back: 'bg-[#172f59]',
+			backAccent: 'text-[#a9e9f9]',
+			scrollbar: '[scrollbar-color:#70dfff_#172f59] [&::-webkit-scrollbar-thumb]:bg-[#70dfff]',
 			Icon: Eye
 		},
 		development: {
 			label: 'Điểm cần phát triển',
-			description: 'Hành vi quan sát được chưa ổn định như kết quả tự đánh giá.',
-			accentClass: 'border-[#ffbd59] bg-[#ffbd59] text-[#1b1002]',
-			glowClass: 'shadow-[0_0_1.5rem_rgb(255_189_89_/.25)]',
-			panelClass:
-				'border-[#ffbd59]/70 bg-[radial-gradient(circle_at_92%_0%,rgb(255_189_89_/.2),transparent_34%),linear-gradient(105deg,rgb(255_189_89_/.1),rgb(5_11_22)_34%)] shadow-[0_0_2.25rem_rgb(255_189_89_/.08)]',
-			numberClass: 'text-[#ffbd59]/20',
-			conclusionClass: 'border-[#ffbd59]/45 bg-[#ffbd59]/12 text-[#ffe7bf]',
+			cardType: 'Thử thách',
+			symbol: '◆',
+			frame: 'border-[#ffc47a]',
+			glow: 'hover:shadow-[0_0_0_1px_#ffc47a,0_0_24px_#ffc47a99,0_18px_42px_rgb(0_0_0_/.28)]',
+			face: 'bg-[#ffd19a]',
+			ink: 'text-[#5d2b29]',
+			muted: 'text-[#744439]',
+			art: 'bg-[radial-gradient(circle_at_50%_42%,#fff2ce_0%,#ffbd84_48%,#ec7181_100%)]',
+			back: 'bg-[#4e293d]',
+			backAccent: 'text-[#ffd19a]',
+			scrollbar: '[scrollbar-color:#ffc47a_#4e293d] [&::-webkit-scrollbar-thumb]:bg-[#ffc47a]',
 			Icon: TrendingUp
 		}
 	};
 
-	function copyFor(finding: BehaviourComparisonFinding): KindCopy {
-		return kindCopy[finding.kind];
+	function flipCard(id: string) {
+		flippedIds = flippedIds.includes(id)
+			? flippedIds.filter((item) => item !== id)
+			: [...flippedIds, id];
+	}
+
+	function syncCarousel() {
+		if (!track) return;
+		if (!hasOverflow) {
+			navigationTarget = null;
+			activeIndex = 0;
+			return;
+		}
+		if (navigationTarget !== null) return;
+		const left = track.scrollLeft;
+		let closest = 0;
+		let distance = Number.POSITIVE_INFINITY;
+		for (const [index, stop] of scrollStops.entries()) {
+			const nextDistance = Math.abs(stop - left);
+			if (nextDistance < distance) {
+				closest = index;
+				distance = nextDistance;
+			}
+		}
+		activeIndex = closest;
+	}
+
+	function showCard(index: number) {
+		if (!track) return;
+		const next = Math.max(0, Math.min(index, scrollStops.length - 1));
+		const position = scrollStops[next];
+		navigationTarget = next;
+		activeIndex = next;
+		track.scrollTo({
+			left: position,
+			behavior: prefersReducedMotion.current ? 'auto' : 'smooth'
+		});
+		if (prefersReducedMotion.current || Math.abs(track.scrollLeft - position) < 1)
+			finishNavigation();
+	}
+
+	function finishNavigation() {
+		if (navigationTarget === null) return;
+		navigationTarget = null;
+		syncCarousel();
+	}
+
+	function measureCarousel() {
+		if (!track) return;
+		const maxScroll = Math.max(0, track.scrollWidth - track.clientWidth);
+		scrollStops = carouselStops(
+			Array.from(track.children, (card) => (card as HTMLElement).offsetLeft),
+			maxScroll
+		);
+		hasOverflow = maxScroll > 2 && scrollStops.length > 1;
+		syncCarousel();
+	}
+
+	function carousel(node: HTMLDivElement) {
+		track = node;
+		const observer = new ResizeObserver(measureCarousel);
+		observer.observe(node);
+		measureCarousel();
+		return () => {
+			observer.disconnect();
+			navigationTarget = null;
+			track = undefined;
+		};
 	}
 </script>
 
-<section
-	class="mt-4 border border-blue bg-[#071020]"
-	aria-labelledby="behaviour-comparison-heading"
->
-	<button
-		class="flex w-full cursor-pointer items-start justify-between gap-8 border-0 bg-transparent p-[clamp(1.4rem,3vw,2rem)] text-left font-[inherit] text-inherit focus-visible:outline-2 focus-visible:-outline-offset-[.45rem] focus-visible:outline-lime"
-		type="button"
-		aria-expanded={expanded}
-		aria-controls="behaviour-comparison-content"
-		onclick={ontoggle}
-	>
+<section class="min-w-0" aria-labelledby="behaviour-comparison-heading">
+	<header class="flex flex-wrap items-end justify-between gap-5 pb-8">
 		<div>
-			<p class="m-0 text-[.66rem] font-bold tracking-[.14em] text-lime uppercase">
-				Test và hành vi
-			</p>
-			<h2 class="mt-2 mb-0 text-[clamp(1.35rem,3vw,1.8rem)]" id="behaviour-comparison-heading">
+			<!-- <p class="m-0 text-[.78rem] font-semibold text-[#8caaf8]">Test và hành vi trong VR</p> -->
+			<h2
+				id="behaviour-comparison-heading"
+				class="mt-2 mb-0 max-w-[26ch] text-[clamp(1.8rem,3vw,2.8rem)] leading-[1.15] font-bold tracking-[-.04em]"
+			>
 				Bạn nghĩ gì, bạn đã thể hiện thế nào?
 			</h2>
-			<p class="mt-2 mb-0 max-w-[46rem] text-[.85rem] leading-6 text-[#91a0b4]">
-				Đối chiếu hồ sơ tự đánh giá với hành vi quan sát được trong trải nghiệm
-				{comparison.experienceName}.
+			<p class="mt-4 mb-0 max-w-[65ch] text-[.9rem] leading-5 text-[#aeb9c8]">
+				Kết quả tự đánh giá được đối chiếu với hành vi quan sát trong trải nghiệm {comparison.experienceName}.
 			</p>
 		</div>
-		<span class="flex flex-none items-center gap-3">
-			{#if comparison.isPlaceholder}
-				<span
-					class="border border-white/20 px-2.5 py-1.5 text-[.65rem] text-[#aeb9c8] max-[560px]:hidden"
-				>
-					Dữ liệu minh họa
-				</span>
+		{#if comparison.isPlaceholder}
+			<span class="border border-white/20 px-3 py-1.5 text-[.72rem] text-[#aeb9c8]"
+				>Dữ liệu minh họa</span
+			>
+		{/if}
+	</header>
+
+	{#if comparison.findings.length > 0}
+		<div class="mb-5 flex flex-wrap items-end justify-between gap-4">
+			<div>
+				{#if hasOverflow}
+					<p class="mb-0 align-middle text-[.76rem] text-[#aeb9c8]">
+						Dùng mũi tên để xem các thẻ tiếp theo.
+					</p>
+				{/if}
+			</div>
+			{#if hasOverflow}
+				<nav class="flex items-center gap-3" aria-label="Chuyển thẻ đối chiếu">
+					<!-- <span
+						class="min-w-16 text-center text-[.78rem] font-semibold text-[#c6d4e7] tabular-nums"
+						aria-live="polite"
+					>
+						{activeIndex + 1} / {scrollStops.length}
+					</span> -->
+					<button
+						class="grid size-11 cursor-pointer place-items-center rounded-full border border-[#8caaf8] bg-[#152344] text-white hover:bg-[#26447d] disabled:cursor-not-allowed disabled:border-white/20 disabled:bg-white/5 disabled:text-white/35"
+						type="button"
+						aria-label="Xem thẻ trước"
+						disabled={activeIndex === 0}
+						onclick={() => showCard(activeIndex - 1)}
+						><ArrowLeft size={19} aria-hidden="true" /></button
+					>
+					<button
+						class="grid size-11 cursor-pointer place-items-center rounded-full border border-lime bg-lime text-[#10200d] hover:bg-[#dcffac] disabled:cursor-not-allowed disabled:border-white/20 disabled:bg-white/5 disabled:text-white/35"
+						type="button"
+						aria-label="Xem thẻ tiếp theo"
+						disabled={activeIndex === scrollStops.length - 1}
+						onclick={() => showCard(activeIndex + 1)}
+						><ArrowRight size={19} aria-hidden="true" /></button
+					>
+				</nav>
 			{/if}
-			<ChevronDown
-				class={`text-lime transition-transform duration-[160ms] motion-reduce:transition-none ${expanded ? 'rotate-180' : ''}`}
-				size={20}
-				strokeWidth={2.25}
-				aria-hidden="true"
-			/>
-		</span>
-	</button>
-
-	{#if expanded}
-		<div
-			id="behaviour-comparison-content"
-			class="border-t border-white/14"
-			transition:slide={{ duration: prefersReducedMotion.current ? 0 : 220 }}
-		>
-			<ol
-				class="m-0 grid list-none items-stretch gap-5 p-[clamp(1rem,2vw,1.5rem)] min-[700px]:grid-cols-2 min-[1050px]:grid-cols-3"
-			>
-				{#each comparison.findings as finding, index (finding.id)}
-					{@const copy = copyFor(finding)}
-					<li class={`relative flex min-w-0 flex-col overflow-hidden border ${copy.panelClass}`}>
-						<span
-							class={`pointer-events-none absolute top-0 right-4 text-[clamp(5rem,8vw,6.75rem)] leading-none font-black tracking-[-.1em] select-none ${copy.numberClass}`}
-							aria-hidden="true"
-						>
-							{String(index + 1).padStart(2, '0')}
-						</span>
-
-						<div
-							class="relative border-b border-white/14 px-[clamp(1rem,2vw,1.5rem)] py-5 min-[1050px]:min-h-[9.25rem]"
-						>
-							<div class="flex min-w-0 items-center gap-4">
-								<span
-									class={`grid size-12 flex-none place-items-center border ${copy.accentClass} ${copy.glowClass}`}
-								>
-									<copy.Icon size={22} strokeWidth={2.4} aria-hidden="true" />
-								</span>
-								<div class="min-w-0 flex-1">
-									<div class="relative z-10 flex items-center">
-										<p
-											class="m-0 text-[.66rem] font-extrabold tracking-[.13em] text-white/65 uppercase"
-										>
-											{copy.label}
-										</p>
-									</div>
-									<h3 class="mt-1 mb-0 text-[clamp(1.2rem,2.4vw,1.65rem)] tracking-[-.02em]">
-										{finding.title}
-									</h3>
-								</div>
-							</div>
-							<p class="relative z-10 mt-4 mb-0 text-[.72rem] leading-5 text-white/65">
-								{copy.description}
-							</p>
-						</div>
-
-						<section
-							class={`relative mx-[clamp(1rem,2vw,1.5rem)] mt-5 border p-[clamp(1rem,2vw,1.35rem)] min-[1050px]:min-h-[9.25rem] ${copy.conclusionClass}`}
-							aria-label={`Kết luận cho ${finding.title}`}
-						>
-							<p class="m-0 text-[.63rem] font-black tracking-[.14em] uppercase">Kết luận chính</p>
-							<p class="mt-3 mb-0 text-[clamp(1rem,1.5vw,1.15rem)] leading-[1.55] font-semibold">
-								{finding.summary}
-							</p>
-						</section>
-
-						<div class="relative flex flex-1 flex-col px-[clamp(1rem,2vw,1.5rem)] py-5">
-							<p
-								class="mt-0 mb-3 text-[.62rem] font-black tracking-[.14em] text-white/45 uppercase"
-							>
-								Căn cứ đối chiếu
-							</p>
-							<div class="border border-white/12 bg-[#020712]/65 p-4 min-[1050px]:min-h-[6.6rem]">
-								<p
-									class="m-0 text-[.62rem] font-extrabold tracking-[.12em] text-[#91a0b4] uppercase"
-								>
-									Kết quả tự đánh giá
-								</p>
-								<p class="mt-2 mb-0 text-[.86rem] leading-[1.65] text-[#dce4ef]">
-									{finding.questionnaireResult}
-								</p>
-							</div>
-							<div class="grid h-12 place-items-center" aria-hidden="true">
-								<span class={`grid size-8 place-items-center border ${copy.accentClass}`}>
-									<ArrowDown size={17} strokeWidth={2.5} />
-								</span>
-							</div>
-							<div class="border border-white/12 bg-[#020712]/65 p-4 min-[1050px]:min-h-[6.6rem]">
-								<p
-									class="m-0 text-[.62rem] font-extrabold tracking-[.12em] text-[#91a0b4] uppercase"
-								>
-									Bằng chứng trong VR
-								</p>
-								<p class="mt-2 mb-0 text-[.86rem] leading-[1.65] text-[#dce4ef]">
-									{finding.vrEvidence}
-								</p>
-							</div>
-						</div>
-					</li>
-				{/each}
-			</ol>
-
-			<p
-				class="m-0 border-t border-white/14 px-[clamp(1.4rem,3vw,2rem)] py-4 text-[.72rem] leading-6 text-[#77869a]"
-			>
-				Kết quả mô tả hành vi đã quan sát trong tình huống này. Đây không phải kết luận cố định về
-				năng lực của bạn.
-			</p>
 		</div>
+		<div
+			{@attach (node) => untrack(() => carousel(node))}
+			onscroll={syncCarousel}
+			onscrollend={finishNavigation}
+			class="relative flex snap-x snap-mandatory [scrollbar-width:none] items-start gap-2 overflow-x-auto overscroll-x-contain pb-4 [&::-webkit-scrollbar]:hidden"
+			aria-label="Các thẻ đối chiếu hành vi"
+		>
+			{#each comparison.findings as finding, index (finding.id)}
+				{@const copy = kindCopy[finding.kind]}
+				{@const CardIcon = finding.icon ? iconCopy[finding.icon] : copy.Icon}
+				{@const flipped = flippedIds.includes(finding.id)}
+				<article
+					class="w-[min(82vw,24rem)] shrink-0 snap-start p-3"
+					aria-labelledby={`behaviour-card-title-${index}`}
+				>
+					<h3 id={`behaviour-card-title-${index}`} class="sr-only">{finding.title}</h3>
+					<p id={`behaviour-card-description-${index}`} class="sr-only">
+						{flipped
+							? `${finding.questionnaireResult} ${finding.vrEvidence} ${finding.kind !== 'confirmed' && finding.remedy ? `Khắc phục: ${finding.remedy}` : ''}`
+							: finding.summary}
+					</p>
+					<button
+						type="button"
+						class={`group relative block aspect-[2/3] min-h-[30rem] w-full cursor-pointer rounded-[1.15rem] border-[3px] border-[#06111b] bg-[#06111b] p-[5px] text-left shadow-[0_12px_28px_rgb(0_0_0_/.22)] transition-shadow duration-300 ease-out [perspective:1200px] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-lime motion-reduce:transition-none ${copy.glow}`}
+						aria-pressed={flipped}
+						aria-label={`${finding.title}. ${flipped ? 'Lật về nhận định' : 'Lật xem căn cứ'}`}
+						aria-describedby={`behaviour-card-description-${index}`}
+						onclick={() => flipCard(finding.id)}
+					>
+						<span
+							class={`relative block h-full min-h-[29rem] w-full rounded-[.8rem] transition-transform duration-700 ease-[cubic-bezier(.2,.7,.25,1)] [transform-style:preserve-3d] motion-reduce:transition-none ${flipped ? '[transform:rotateY(180deg)]' : ''}`}
+						>
+							<span
+								aria-hidden={flipped}
+								class={`absolute inset-0 flex flex-col overflow-hidden rounded-[.8rem] border [backface-visibility:hidden] ${copy.frame} ${copy.face}`}
+							>
+								<span class={`flex flex-1 flex-col p-4 ${copy.ink}`}>
+									<span class="flex items-start justify-between gap-3">
+										<span class="flex flex-col"
+											><span class="text-[2.2rem] leading-none" aria-hidden="true"
+												>{copy.symbol}</span
+											><span class="mt-1 text-[.67rem] font-extrabold">{copy.cardType}</span></span
+										>
+										<span class="max-w-[10rem] text-right text-[.72rem] leading-5 font-bold"
+											>{copy.label}</span
+										>
+									</span>
+									<span
+										class={`relative mt-4 grid h-36 shrink-0 place-items-center overflow-hidden rounded-[.5rem] border-2 ${copy.frame} ${copy.art}`}
+									>
+										<span class={`absolute size-28 rounded-full border-2 ${copy.frame}`}></span>
+										<span
+											class={`absolute size-20 rotate-45 rounded-[1.2rem] border-2 ${copy.frame}`}
+										></span>
+										<CardIcon
+											class="relative size-14 drop-shadow-[0_5px_10px_rgb(0_0_0_/.16)]"
+											strokeWidth={1.5}
+											aria-hidden="true"
+										/>
+										<span
+											class="absolute inset-0 flex items-center justify-center gap-2 bg-[#09202d]/80 text-[.88rem] font-bold text-white opacity-0 transition-opacity duration-200 group-hover:opacity-100 group-focus-visible:opacity-100 motion-reduce:transition-none"
+											><RotateCcw size={18} aria-hidden="true" /> Lật xem căn cứ</span
+										>
+									</span>
+									<span class="mt-5 text-[1.5rem] leading-[1.12] font-semibold tracking-[-.035em]"
+										>{finding.title}</span
+									>
+									<span class={`mt-2 text-[.84rem] leading-[1.55] ${copy.muted}`}
+										>{finding.summary}</span
+									>
+									<span
+										class="mt-auto rotate-180 self-end text-[2.2rem] leading-none"
+										aria-hidden="true">{copy.symbol}</span
+									>
+								</span>
+								<span
+									class={`flex items-center justify-between gap-2 border-t px-4 py-3 text-[.75rem] font-bold ${copy.frame} ${copy.ink}`}
+								>
+									<span>Nhấp hoặc chạm để lật thẻ</span><RotateCcw size={16} aria-hidden="true" />
+								</span>
+							</span>
+
+							<span
+								aria-hidden={!flipped}
+								class={`absolute inset-0 flex [transform:rotateY(180deg)] flex-col overflow-hidden rounded-[.8rem] border text-white [backface-visibility:hidden] ${copy.frame} ${copy.back}`}
+							>
+								<span
+									class={`flex min-h-0 flex-1 [scrollbar-width:thin] flex-col overflow-y-auto p-5 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-black/25 ${copy.scrollbar}`}
+								>
+									<span class={`flex items-start justify-between gap-3 ${copy.backAccent}`}
+										><span class="text-[2rem] leading-none" aria-hidden="true">{copy.symbol}</span
+										><span class="text-right text-[.72rem] font-bold"
+											>Mặt sau · {copy.cardType}</span
+										></span
+									>
+									<span class="mt-5 text-[1.55rem] leading-[1.12] font-semibold tracking-[-.035em]"
+										>{finding.title}</span
+									>
+									<span class={`mt-5 h-px w-full shrink-0 ${copy.face}`}></span>
+									<span class="mt-5 block border border-white/25 bg-black/15 p-4">
+										<span
+											class={`flex items-center gap-2 text-[.75rem] font-bold ${copy.backAccent}`}
+											><ClipboardList size={16} aria-hidden="true" />Bạn tự đánh giá</span
+										>
+										<span class="mt-2 block text-[.86rem] leading-[1.6] text-white/90"
+											>{finding.questionnaireResult}</span
+										>
+									</span>
+									<span class="mt-3 block border border-white/25 bg-black/15 p-4">
+										<span
+											class={`flex items-center gap-2 text-[.75rem] font-bold ${copy.backAccent}`}
+											><Glasses size={16} aria-hidden="true" />Bạn thể hiện trong VR</span
+										>
+										<span class="mt-2 block text-[.86rem] leading-[1.6] text-white/90"
+											>{finding.vrEvidence}</span
+										>
+									</span>
+									{#if finding.kind !== 'confirmed' && finding.remedy}
+										<span class="mt-3 block border border-white/25 bg-black/15 p-4">
+											<span
+												class={`flex items-center gap-2 text-[.75rem] font-bold ${copy.backAccent}`}
+												><Lightbulb size={16} aria-hidden="true" />Khắc phục</span
+											>
+											<span class="mt-2 block text-[.86rem] leading-[1.6] text-white/90"
+												>{finding.remedy}</span
+											>
+										</span>
+									{/if}
+									<span
+										class={`mt-auto rotate-180 self-end pb-2 text-[2rem] leading-none ${copy.backAccent}`}
+										aria-hidden="true">{copy.symbol}</span
+									>
+								</span>
+								<span
+									class={`flex items-center justify-between gap-2 border-t border-white/25 px-4 py-3 text-[.75rem] font-bold ${copy.backAccent}`}
+									><span>Nhấp hoặc chạm để lật lại</span><RotateCcw
+										size={16}
+										aria-hidden="true"
+									/></span
+								>
+							</span>
+						</span>
+					</button>
+				</article>
+			{/each}
+		</div>
+	{:else}
+		<p class="border-t border-white/14 py-6 text-[#91a0b4]">Chưa có điểm đối chiếu để hiển thị.</p>
 	{/if}
+
+	<p class="mt-2 mb-0 text-[.78rem] leading-6 text-[#91a0b4]">
+		Kết quả mô tả hành vi đã quan sát trong tình huống này. Đây không phải kết luận cố định về năng
+		lực của bạn.
+	</p>
 </section>

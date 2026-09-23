@@ -29,12 +29,15 @@ describe('placeholder behaviour comparison', () => {
 		expect(placeholderBehaviourComparison.findings.map((finding) => finding.kind)).toEqual([
 			'confirmed',
 			'emerging',
-			'development'
+			'development',
+			'confirmed',
+			'emerging'
 		]);
 		for (const finding of placeholderBehaviourComparison.findings) {
 			expect(finding.questionnaireResult).toBeTruthy();
 			expect(finding.vrEvidence).toBeTruthy();
 			expect(finding.summary).toBeTruthy();
+			if (finding.kind !== 'confirmed') expect(finding.remedy).toBeTruthy();
 		}
 	});
 });
