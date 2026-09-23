@@ -9,6 +9,7 @@
 	import FinalDimensionDetails from '$lib/components/FinalDimensionDetails.svelte';
 	import FinalDesmapRadar from '$lib/components/FinalDesmapRadar.svelte';
 	import FinalUserEvaluation from '$lib/components/FinalUserEvaluation.svelte';
+	import FinalEvaluationSkeleton from '$lib/components/FinalEvaluationSkeleton.svelte';
 	import Header from '$lib/components/Header.svelte';
 	import InitialMatchPanel from '$lib/components/InitialMatchPanel.svelte';
 	import {
@@ -50,8 +51,11 @@
 	let syncStatus = $state<QuestionnaireSyncStatus | null>(null);
 	let syncInFlight = $state(false);
 	let dimensionsExpanded = $state(false);
+	let finalAssessmentResult = $state<FinalAssessment | null>(null);
+	let finalLookupCompleted = $state(false);
+	let finalLookupPending = $derived(data.hasAssessmentCookie && !finalLookupCompleted);
 	let finalAssessment = $derived(
-		data.finalAssessment ??
+		finalAssessmentResult ??
 			(data.previewFinal && payload ? createPreviewFinalAssessment(payload) : null)
 	);
 	let pageState = $derived(evaluationPageState(payload, finalAssessment));
@@ -164,6 +168,10 @@
 	}
 
 	onMount(() => {
+		void initializeAssessment();
+	});
+
+	async function initializeAssessment() {
 		payload = readCompletionPayload();
 		if (!payload && data.previewFinal) {
 			payload = buildCompletionPayload({
@@ -174,17 +182,22 @@
 				startedAt: new Date().toISOString(),
 				participant: { name: 'Bản xem trước', email: 'preview@example.com' }
 			});
+			finalLookupCompleted = true;
 			viewState = 'success';
 			return;
 		}
-		if (!payload) viewState = 'empty';
-		else {
+		if (!payload) {
+			viewState = 'empty';
+			finalLookupCompleted = true;
+		} else {
 			syncStatus = readQuestionnaireSyncStatus(payload.assessmentId);
+			if (!syncStatus || syncStatus.status === 'pending') void syncSubmission();
+			finalAssessmentResult = await data.finalAssessment;
+			finalLookupCompleted = true;
 			if (evaluationPageState(payload, finalAssessment) === 'final') viewState = 'success';
 			else void loadAssessment();
-			if (!syncStatus || syncStatus.status === 'pending') void syncSubmission();
 		}
-	});
+	}
 
 	function showNotice(message: string) {
 		notice = message;
@@ -243,11 +256,13 @@
 <main
 	class={[
 		'min-h-dvh py-[clamp(2.2rem,5vw,5rem)] pb-16 text-[#f7f9fb]',
-		pageState === 'final' ? 'final-evaluation-page-gradient' : 'evaluation-page-gradient'
+		pageState === 'final' || finalLookupPending
+			? 'final-evaluation-page-gradient'
+			: 'evaluation-page-gradient'
 	]}
 >
 	<div class="mx-auto w-[min(90rem,calc(100%_-_4rem))] max-[640px]:w-[calc(100%_-_1.4rem)]">
-		{#if pageState !== 'final'}
+		{#if pageState !== 'final' && !finalLookupPending}
 			<section class="border-b border-white/14 py-12">
 				<p class="m-0 text-[.68rem] font-[760] tracking-[.16em] text-lime uppercase">
 					02 / ĐỐI CHIẾU NGHỀ NGHIỆP BAN ĐẦU
@@ -299,6 +314,8 @@
 					href={resolve('/questionnaire')}>Đến bảng câu hỏi</a
 				>
 			</section>
+		{:else if finalLookupPending}
+			<FinalEvaluationSkeleton />
 		{:else if viewState === 'loading'}
 			<section class="mt-8">
 				<p class="sr-only" aria-live="polite" role="status">

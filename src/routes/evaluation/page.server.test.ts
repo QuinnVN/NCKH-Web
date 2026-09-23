@@ -37,6 +37,23 @@ function loadEvent(assessmentId?: string) {
 describe('evaluation page server load', () => {
 	beforeEach(() => vi.clearAllMocks());
 
+	it('returns the page while the final evaluation is still loading', async () => {
+		let finishLookup!: (value: typeof finalAssessment) => void;
+		repositories.findQuestionnaireSubmissionByAssessmentId.mockResolvedValue(submission);
+		repositories.findFinalEvaluation.mockReturnValue(
+			new Promise((resolve) => {
+				finishLookup = resolve;
+			})
+		);
+
+		const result = await load(loadEvent('assessment-123') as never);
+
+		expect(result).toMatchObject({ hasAssessmentCookie: true });
+		expect(result?.finalAssessment).toBeInstanceOf(Promise);
+		finishLookup(finalAssessment);
+		expect(await result?.finalAssessment).toEqual(finalAssessment);
+	});
+
 	it('loads the final evaluation for the assessment selected during login', async () => {
 		repositories.findQuestionnaireSubmissionByAssessmentId.mockResolvedValue(submission);
 		repositories.findFinalEvaluation.mockResolvedValue(finalAssessment);
@@ -47,7 +64,8 @@ describe('evaluation page server load', () => {
 			'assessment-123'
 		);
 		expect(repositories.findFinalEvaluation).toHaveBeenCalledWith(submission);
-		expect(result).toMatchObject({ finalAssessment });
+		expect(result).toMatchObject({ hasAssessmentCookie: true });
+		expect(await result?.finalAssessment).toEqual(finalAssessment);
 	});
 
 	it('keeps the initial evaluation when the login has no final evaluation', async () => {
@@ -56,7 +74,7 @@ describe('evaluation page server load', () => {
 
 		const result = await load(loadEvent('assessment-123') as never);
 
-		expect(result).toMatchObject({ finalAssessment: null });
+		expect(await result?.finalAssessment).toBeNull();
 	});
 
 	it('keeps the initial evaluation available when MongoDB is unavailable', async () => {
@@ -66,6 +84,6 @@ describe('evaluation page server load', () => {
 
 		const result = await load(loadEvent('assessment-123') as never);
 
-		expect(result).toMatchObject({ finalAssessment: null });
+		expect(await result?.finalAssessment).toBeNull();
 	});
 });

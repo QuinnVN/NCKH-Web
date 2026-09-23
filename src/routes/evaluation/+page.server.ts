@@ -4,20 +4,22 @@ import { getInitialAssessmentMode } from '$lib/server/initial-assessment-mode';
 import { findQuestionnaireSubmissionByAssessmentId } from '$lib/server/questionnaire-submissions';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ cookies, url }) => {
-	let finalAssessment = null;
+export const load: PageServerLoad = ({ cookies, url }) => {
 	const assessmentId = cookies.get('desmap_assessment_id');
-	if (assessmentId) {
+	const finalAssessment = (async () => {
+		if (!assessmentId) return null;
 		try {
 			const submission = await findQuestionnaireSubmissionByAssessmentId(assessmentId);
-			if (submission) finalAssessment = await findFinalEvaluation(submission);
+			return submission ? await findFinalEvaluation(submission) : null;
 		} catch {
 			// A database outage must not block the locally saved initial assessment.
+			return null;
 		}
-	}
+	})();
 	return {
 		initialAssessmentMode: getInitialAssessmentMode(),
 		finalAssessment,
+		hasAssessmentCookie: Boolean(assessmentId),
 		previewFinal: dev && url.searchParams.get('preview') === 'final'
 	};
 };
