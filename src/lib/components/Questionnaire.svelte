@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, tick } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { ArrowLeft, ArrowRight, Check, Plus, Star } from '@lucide/svelte';
+	import { ArrowLeft, ArrowRight, Check, LoaderCircle, Plus, Star } from '@lucide/svelte';
 	import { resolve } from '$app/paths';
 	import { prefersReducedMotion } from 'svelte/motion';
 	import { fly } from 'svelte/transition';
@@ -28,6 +28,7 @@
 		readSavedQuestionnaire,
 		totalQuestionCount,
 		writeCompletionPayload,
+		uploadQuestionnaireSubmission,
 		writeQuestionnaireSyncStatus,
 		writeSavedQuestionnaire
 	} from '$lib/questionnaire';
@@ -46,6 +47,7 @@
 	let transitionsReady = $state(false);
 	let animateCareerHandoff = $state(false);
 	let completedAssessment = $state<QuestionnaireSubmission | null>(null);
+	let submitting = $state(false);
 
 	let orderedQuestions = $derived(
 		presentationOrder ? questionsInPresentationOrder(presentationOrder) : []
@@ -251,7 +253,8 @@
 		);
 	}
 
-	function submitAssessment() {
+	async function submitAssessment() {
+		if (submitting) return;
 		if (lockCompletedAssessment()) {
 			errorMessage = '';
 			return;
@@ -282,7 +285,10 @@
 		}
 		writeQuestionnaireSyncStatus({ assessmentId: payload.assessmentId, status: 'pending' });
 		clearSavedQuestionnaire();
+		submitting = true;
+		await uploadQuestionnaireSubmission(payload);
 		completedAssessment = payload;
+		submitting = false;
 		void goto(resolve('/evaluation'));
 	}
 </script>
@@ -636,10 +642,22 @@
 								class="inline-flex min-h-[3.35rem] cursor-pointer items-center justify-center gap-3 rounded-xl border-0 bg-lime px-[1.55rem] py-[.8rem] text-[.9rem] font-extrabold tracking-[.01em] text-[#090d11] transition-[transform,filter] duration-180 hover:-translate-y-0.5 hover:brightness-[1.07] focus-visible:-translate-y-0.5 focus-visible:brightness-[1.07] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-45 disabled:grayscale-[.65] max-[560px]:order-3 max-[560px]:w-full"
 								type="button"
 								onclick={submitAssessment}
-								disabled={unansweredQuestions.length > 0}
+								disabled={unansweredQuestions.length > 0 || submitting}
 							>
-								Hoàn tất đánh giá <span aria-hidden="true"><ArrowRight class="size-[1em]" /></span>
+								{#if submitting}
+									<LoaderCircle
+										class="size-4 animate-spin motion-reduce:animate-none"
+										aria-hidden="true"
+									/>
+									Đang gửi dữ liệu...
+								{:else}
+									Hoàn tất đánh giá <span aria-hidden="true"><ArrowRight class="size-[1em]" /></span
+									>
+								{/if}
 							</button>
+							{#if submitting}
+								<span class="sr-only" role="status">Đang gửi kết quả lên máy chủ.</span>
+							{/if}
 						</div>
 					</section>
 				{/if}

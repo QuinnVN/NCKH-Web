@@ -191,7 +191,12 @@
 			finalLookupCompleted = true;
 		} else {
 			syncStatus = readQuestionnaireSyncStatus(payload.assessmentId);
-			if (!syncStatus || syncStatus.status === 'pending') void syncSubmission();
+			if (
+				!syncStatus ||
+				syncStatus.status === 'pending' ||
+				(syncStatus.status === 'error' && syncStatus.recoverable)
+			)
+				void syncSubmission();
 			finalAssessmentResult = await data.finalAssessment;
 			finalLookupCompleted = true;
 			if (evaluationPageState(payload, finalAssessment) === 'final') viewState = 'success';
@@ -501,6 +506,9 @@
 					<GroupedDesmapProfile scores={payload.scores} />
 				</section>
 			{/if}
+
+
+
 			<section
 				class={`flex flex-wrap items-center justify-between gap-5 ${pageState === 'final' ? 'mx-auto max-w-[82rem] border-t border-white/14 py-8' : 'mt-4 border border-blue bg-[#071020] p-6'}`}
 			>

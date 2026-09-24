@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { buildCompletionPayload, desmapQuestions } from './data';
+import {
+	buildCompletionPayload,
+	desmapQuestions,
+	QUESTIONNAIRE_COMPLETION_STORAGE_KEY,
+	writeCompletionPayload
+} from './data';
 import { checkEmailAvailability, uploadQuestionnaireSubmission } from './submission';
 
 const payload = buildCompletionPayload({
@@ -13,6 +18,31 @@ const payload = buildCompletionPayload({
 });
 
 describe('questionnaire submission client', () => {
+	it('removes the pending local copy only after the server confirms the submission', async () => {
+		const local = new Map<string, string>();
+		const session = new Map<string, string>();
+		const storage = (values: Map<string, string>) => ({
+			getItem: (key: string) => values.get(key) ?? null,
+			setItem: (key: string, value: string) => values.set(key, value),
+			removeItem: (key: string) => values.delete(key)
+		});
+		vi.stubGlobal('window', { localStorage: storage(local), sessionStorage: storage(session) });
+		try {
+			expect(writeCompletionPayload(payload)).toBe(true);
+			const unavailable = vi
+				.fn<typeof fetch>()
+				.mockResolvedValue(new Response(null, { status: 503 }));
+			await uploadQuestionnaireSubmission(payload, unavailable);
+			expect(local.has(QUESTIONNAIRE_COMPLETION_STORAGE_KEY)).toBe(true);
+			const available = vi
+				.fn<typeof fetch>()
+				.mockResolvedValue(new Response(null, { status: 201 }));
+			await uploadQuestionnaireSubmission(payload, available);
+			expect(local.has(QUESTIONNAIRE_COMPLETION_STORAGE_KEY)).toBe(false);
+		} finally {
+			vi.unstubAllGlobals();
+		}
+	});
 	it('checks email availability', async () => {
 		const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
 			new Response(JSON.stringify({ available: true }), {

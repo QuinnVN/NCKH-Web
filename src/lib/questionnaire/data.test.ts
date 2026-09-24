@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
 	buildCompletionPayload,
+	clearPendingCompletionPayload,
 	clearSavedQuestionnaire,
 	createAssessmentId,
 	createQuestionnairePresentationOrder,
@@ -61,7 +62,7 @@ function mockBrowserStorage() {
 describe('questionnaire draft storage', () => {
 	afterEach(() => vi.unstubAllGlobals());
 
-	it('autosaves the draft in local storage and keeps completion in session storage', () => {
+	it('keeps a completed submission locally until MongoDB confirms it', () => {
 		const { local, session } = mockBrowserStorage();
 		const draft = draftRecord();
 
@@ -72,6 +73,10 @@ describe('questionnaire draft storage', () => {
 
 		expect(writeCompletionPayload(completedRecord())).toBe(true);
 		expect(session.has(QUESTIONNAIRE_COMPLETION_STORAGE_KEY)).toBe(true);
+		expect(local.has(QUESTIONNAIRE_COMPLETION_STORAGE_KEY)).toBe(true);
+		session.delete(QUESTIONNAIRE_COMPLETION_STORAGE_KEY);
+		expect(readCompletionPayload()).toEqual(completedRecord());
+		clearPendingCompletionPayload(completedRecord().assessmentId);
 		expect(local.has(QUESTIONNAIRE_COMPLETION_STORAGE_KEY)).toBe(false);
 	});
 
@@ -139,7 +144,12 @@ describe('completed questionnaire identity', () => {
 
 	it('preserves a restored MongoDB submission for the evaluation page', () => {
 		const values = new Map<string, string>();
+		const local = new Map<string, string>();
 		vi.stubGlobal('window', {
+			localStorage: {
+				getItem: (key: string) => local.get(key) ?? null,
+				setItem: (key: string, value: string) => local.set(key, value)
+			},
 			sessionStorage: {
 				getItem: (key: string) => values.get(key) ?? null,
 				setItem: (key: string, value: string) => values.set(key, value)
@@ -153,7 +163,12 @@ describe('completed questionnaire identity', () => {
 
 	it('keeps a logged-in participant on their evaluation route for the tab session', () => {
 		const values = new Map<string, string>();
+		const local = new Map<string, string>();
 		vi.stubGlobal('window', {
+			localStorage: {
+				getItem: (key: string) => local.get(key) ?? null,
+				setItem: (key: string, value: string) => local.set(key, value)
+			},
 			sessionStorage: {
 				getItem: (key: string) => values.get(key) ?? null,
 				setItem: (key: string, value: string) => values.set(key, value)

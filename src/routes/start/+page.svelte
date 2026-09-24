@@ -8,6 +8,7 @@
 	import BrandMark from '$lib/components/BrandMark.svelte';
 	import {
 		checkEmailAvailability,
+		clearPendingCompletionPayload,
 		clearSavedQuestionnaire,
 		createQuestionnairePresentationOrder,
 		isValidParticipantDetails,
@@ -59,6 +60,7 @@
 			assessmentId: restoredSubmission.assessmentId,
 			status: 'synced'
 		});
+		clearPendingCompletionPayload(restoredSubmission.assessmentId);
 		void goto(resolve('/evaluation'));
 	}
 

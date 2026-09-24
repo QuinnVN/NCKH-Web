@@ -1,5 +1,5 @@
 import type { QuestionnaireSubmission, QuestionnaireSyncStatus } from './data';
-import { writeQuestionnaireSyncStatus } from './data';
+import { clearPendingCompletionPayload, writeQuestionnaireSyncStatus } from './data';
 
 export type SubmissionFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
@@ -53,6 +53,7 @@ export async function uploadQuestionnaireSubmission(
 		if (response.ok) {
 			const status = { assessmentId: payload.assessmentId, status: 'synced' } as const;
 			writeQuestionnaireSyncStatus(status);
+			clearPendingCompletionPayload(payload.assessmentId);
 			return status;
 		}
 		const body = (await response.json().catch(() => null)) as { error?: unknown } | null;

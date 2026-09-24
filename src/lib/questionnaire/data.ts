@@ -537,9 +537,25 @@ export function writeCompletionPayload(payload: QuestionnaireSubmission): boolea
 	if (typeof window === 'undefined') return false;
 	try {
 		window.sessionStorage.setItem(QUESTIONNAIRE_COMPLETION_STORAGE_KEY, JSON.stringify(payload));
+		window.localStorage.setItem(QUESTIONNAIRE_COMPLETION_STORAGE_KEY, JSON.stringify(payload));
 		return true;
 	} catch {
 		return false;
+	}
+}
+
+export function clearPendingCompletionPayload(assessmentId: string): void {
+	if (typeof window === 'undefined') return;
+	try {
+		const raw = window.localStorage.getItem(QUESTIONNAIRE_COMPLETION_STORAGE_KEY);
+		if (
+			raw &&
+			(JSON.parse(raw) as Partial<QuestionnaireSubmission>).assessmentId === assessmentId
+		) {
+			window.localStorage.removeItem(QUESTIONNAIRE_COMPLETION_STORAGE_KEY);
+		}
+	} catch {
+		// Keep the current session result even if local storage is unavailable.
 	}
 }
 
@@ -631,7 +647,9 @@ export function parseCompletionPayload(
 export function readCompletionPayload(): QuestionnaireSubmission | null {
 	if (typeof window === 'undefined') return null;
 	try {
-		const raw = window.sessionStorage.getItem(QUESTIONNAIRE_COMPLETION_STORAGE_KEY);
+		const raw =
+			window.sessionStorage.getItem(QUESTIONNAIRE_COMPLETION_STORAGE_KEY) ??
+			window.localStorage.getItem(QUESTIONNAIRE_COMPLETION_STORAGE_KEY);
 		if (!raw) return null;
 		const parsed: unknown = JSON.parse(raw);
 		const payload = parseCompletionPayload(parsed);

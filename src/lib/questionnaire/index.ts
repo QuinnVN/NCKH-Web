@@ -23,6 +23,7 @@ export {
 export {
 	buildCompletionPayload,
 	careerInterestOptions,
+	clearPendingCompletionPayload,
 	clearSavedQuestionnaire,
 	createAssessmentId,
 	createQuestionnairePresentationOrder,
