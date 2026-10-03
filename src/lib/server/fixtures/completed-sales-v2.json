@@ -1,0 +1,181 @@
+{
+	"_id": "run-v2",
+	"runId": "run-v2",
+	"participantName": "Synthetic participant",
+	"participantSessionId": "synthetic-session",
+	"gameId": "sale",
+	"status": "completed",
+	"startedAtUtc": "2026-10-03T10:14:59.917485Z",
+	"completedAtUtc": "2026-10-03T10:15:03.018394Z",
+	"data": {
+		"part1": {
+			"salesSessionId": "v2",
+			"attemptId": "p1",
+			"selectedShoeId": "a",
+			"bestFitShoeId": "a",
+			"transcript": "Synthetic transcript",
+			"score": 80,
+			"feedbackVi": "Synthetic fixture",
+			"recordingAtUtc": "2026-10-03T00:00:00Z",
+			"assessmentCompletedAtUtc": "2026-10-03T00:00:01Z"
+		},
+		"part2": {
+			"pipelineVersion": "sales-openrouter-v2",
+			"rubricVersion": "sales-rubric-v2",
+			"scenarioVersion": "returning-shoes-v2",
+			"questionSetVersion": "sales-jev-v2.1",
+			"thresholdVersion": "sales-thresholds-v2",
+			"promptVersion": "lan-writer-v2.1",
+			"assessmentStatus": "completed",
+			"endingReason": "objectives_completed",
+			"maxTurns": 8,
+			"evaluableTurnCount": 6,
+			"supplementalTurnGranted": false,
+			"turns": [
+				{
+					"turnId": "turn-1",
+					"transcript": "Em xin lỗi chị, chị có thể nói rõ vấn đề không?",
+					"customerReply": "Chị ghi nhận lời em, nhưng chị muốn hiểu vì sao đôi giày này gây đau khi đi lại.",
+					"playerResponseRating": "good",
+					"policyViolations": [],
+					"activeObjective": 2,
+					"objectiveActiveDuringTurn": 1,
+					"turnTimestampUtc": "2026-10-03T10:15:00.235263Z"
+				},
+				{
+					"turnId": "turn-2",
+					"transcript": "Em xin lỗi chị, chị có thể nói rõ vấn đề không?",
+					"customerReply": "Chị đi bộ từ bến xe đến trường và giữa các lớp mỗi ngày.",
+					"playerResponseRating": "good",
+					"policyViolations": [],
+					"activeObjective": 2,
+					"objectiveActiveDuringTurn": 2,
+					"turnTimestampUtc": "2026-10-03T10:15:00.596276Z"
+				},
+				{
+					"turnId": "turn-3",
+					"transcript": "Em xin lỗi chị, chị có thể nói rõ vấn đề không?",
+					"customerReply": "Đôi giày của chị đúng cỡ và còn nguyên vẹn, không bị hỏng.",
+					"playerResponseRating": "good",
+					"policyViolations": [],
+					"activeObjective": 2,
+					"objectiveActiveDuringTurn": 2,
+					"turnTimestampUtc": "2026-10-03T10:15:00.973294Z"
+				},
+				{
+					"turnId": "turn-4",
+					"transcript": "Em xin lỗi chị, chị có thể nói rõ vấn đề không?",
+					"customerReply": "Chị hiểu vì sao đôi này chưa hợp, vậy tiệm có phương án xử lý thế nào?",
+					"playerResponseRating": "good",
+					"policyViolations": [],
+					"activeObjective": 3,
+					"objectiveActiveDuringTurn": 2,
+					"turnTimestampUtc": "2026-10-03T10:15:01.452678Z"
+				},
+				{
+					"turnId": "turn-5",
+					"transcript": "Em xin lỗi chị, chị có thể nói rõ vấn đề không?",
+					"customerReply": "Nhưng lần trước em cũng tư vấn đôi này phù hợp với chị. Làm sao chị biết lần này sẽ không gặp vấn đề tương tự?",
+					"playerResponseRating": "good",
+					"policyViolations": [],
+					"activeObjective": 4,
+					"objectiveActiveDuringTurn": 3,
+					"turnTimestampUtc": "2026-10-03T10:15:02.017851Z"
+				},
+				{
+					"turnId": "turn-6",
+					"transcript": "Em xin lỗi chị, chị có thể nói rõ vấn đề không?",
+					"customerReply": "Giờ chị thấy yên tâm hơn. Chị hài lòng, cảm ơn em.",
+					"playerResponseRating": "good",
+					"policyViolations": [],
+					"activeObjective": 4,
+					"objectiveActiveDuringTurn": 4,
+					"turnTimestampUtc": "2026-10-03T10:15:02.755610Z"
+				}
+			],
+			"rawScore": 100,
+			"policyViolationPenalty": 0,
+			"policyViolations": [],
+			"score": 100,
+			"customerRating": "good",
+			"criterionScores": {
+				"apologyAndPolicyRemedy": 50,
+				"adaptabilityAndDeescalation": 50
+			},
+			"trustState": "restored",
+			"finalCustomerText": "Giờ chị thấy yên tâm hơn. Chị hài lòng, cảm ơn em.",
+			"goodResponseCount": 6,
+			"badResponseCount": 0,
+			"emotionalHandling": true,
+			"causeIdentification": true,
+			"solutionSuitability": true,
+			"trustRebuilding": true,
+			"completionReason": "objectives_completed",
+			"acceptedTurnCount": 6,
+			"silenceCount": 0,
+			"completedAtUtc": "2026-10-03T10:15:02.892059Z"
+		},
+		"turns": [
+			{
+				"turnId": "turn-1",
+				"transcript": "Em xin lỗi chị, chị có thể nói rõ vấn đề không?",
+				"customerReply": "Chị ghi nhận lời em, nhưng chị muốn hiểu vì sao đôi giày này gây đau khi đi lại.",
+				"playerResponseRating": "good",
+				"policyViolations": [],
+				"activeObjective": 2,
+				"objectiveActiveDuringTurn": 1,
+				"turnTimestampUtc": "2026-10-03T10:15:00.235263Z"
+			},
+			{
+				"turnId": "turn-2",
+				"transcript": "Em xin lỗi chị, chị có thể nói rõ vấn đề không?",
+				"customerReply": "Chị đi bộ từ bến xe đến trường và giữa các lớp mỗi ngày.",
+				"playerResponseRating": "good",
+				"policyViolations": [],
+				"activeObjective": 2,
+				"objectiveActiveDuringTurn": 2,
+				"turnTimestampUtc": "2026-10-03T10:15:00.596276Z"
+			},
+			{
+				"turnId": "turn-3",
+				"transcript": "Em xin lỗi chị, chị có thể nói rõ vấn đề không?",
+				"customerReply": "Đôi giày của chị đúng cỡ và còn nguyên vẹn, không bị hỏng.",
+				"playerResponseRating": "good",
+				"policyViolations": [],
+				"activeObjective": 2,
+				"objectiveActiveDuringTurn": 2,
+				"turnTimestampUtc": "2026-10-03T10:15:00.973294Z"
+			},
+			{
+				"turnId": "turn-4",
+				"transcript": "Em xin lỗi chị, chị có thể nói rõ vấn đề không?",
+				"customerReply": "Chị hiểu vì sao đôi này chưa hợp, vậy tiệm có phương án xử lý thế nào?",
+				"playerResponseRating": "good",
+				"policyViolations": [],
+				"activeObjective": 3,
+				"objectiveActiveDuringTurn": 2,
+				"turnTimestampUtc": "2026-10-03T10:15:01.452678Z"
+			},
+			{
+				"turnId": "turn-5",
+				"transcript": "Em xin lỗi chị, chị có thể nói rõ vấn đề không?",
+				"customerReply": "Nhưng lần trước em cũng tư vấn đôi này phù hợp với chị. Làm sao chị biết lần này sẽ không gặp vấn đề tương tự?",
+				"playerResponseRating": "good",
+				"policyViolations": [],
+				"activeObjective": 4,
+				"objectiveActiveDuringTurn": 3,
+				"turnTimestampUtc": "2026-10-03T10:15:02.017851Z"
+			},
+			{
+				"turnId": "turn-6",
+				"transcript": "Em xin lỗi chị, chị có thể nói rõ vấn đề không?",
+				"customerReply": "Giờ chị thấy yên tâm hơn. Chị hài lòng, cảm ơn em.",
+				"playerResponseRating": "good",
+				"policyViolations": [],
+				"activeObjective": 4,
+				"objectiveActiveDuringTurn": 4,
+				"turnTimestampUtc": "2026-10-03T10:15:02.755610Z"
+			}
+		]
+	}
+}
