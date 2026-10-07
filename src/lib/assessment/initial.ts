@@ -1,4 +1,9 @@
-import type { QuestionnaireSubmission } from '$lib/questionnaire';
+import {
+	careerInterestOptions,
+	type QuestionnaireSubmission,
+	type StageId
+} from '$lib/questionnaire';
+import { suggestionCareers, CAREER_RANKING_VERSION } from './career-ranking';
 import {
 	assessmentConfig,
 	careerCandidatesForInterests,
@@ -22,6 +27,7 @@ export type InitialAssessmentCareer = {
 };
 export type InitialAssessmentRequest = {
 	assessment_id: string;
+	career_interests: string[];
 	dimensions: InitialAssessmentDimension[];
 	careers: InitialAssessmentCareer[];
 };
@@ -30,7 +36,14 @@ export type InitialCareerMatch = {
 	career_name: string;
 	match_percentage: number;
 };
-export type InitialAssessmentResponse = { assessment_id: string; results: InitialCareerMatch[] };
+export type InitialStageInsight = { assessment: string; strength: string; weakness: string };
+export type InitialCareerSuggestion = { id: string; name: string; description: string };
+export type InitialAssessmentResponse = {
+	assessment_id: string;
+	results: InitialCareerMatch[];
+	stage_insights?: Record<StageId, InitialStageInsight>;
+	career_suggestions?: InitialCareerSuggestion[];
+};
 export type InitialAssessmentMode = 'ai' | 'weighted';
 
 export type AssessmentStorage = {
@@ -59,7 +72,7 @@ export class InitialAssessmentError extends Error {
 	}
 }
 
-export const INITIAL_ASSESSMENT_CACHE_KEY = 'desmap:assessment:initial:v2';
+export const INITIAL_ASSESSMENT_CACHE_KEY = 'desmap:assessment:initial:v8';
 
 export function initialAssessmentCacheKey(mode: InitialAssessmentMode): string {
 	return `${INITIAL_ASSESSMENT_CACHE_KEY}:${mode}`;
@@ -80,7 +93,7 @@ export function requestFingerprint(
 	request: InitialAssessmentRequest,
 	mode: InitialAssessmentMode = 'ai'
 ): string {
-	return stable({ mode, request });
+	return stable({ mode, request, careerRankingVersion: CAREER_RANKING_VERSION });
 }
 
 export function buildInitialAssessmentRequest(
@@ -98,7 +111,12 @@ export function buildInitialAssessmentRequest(
 	);
 	if (careers.length === 0)
 		throw new InitialAssessmentError('data', 'Chưa có nghề nghiệp nào để đánh giá.');
-	const request = { assessment_id: payload.assessmentId, dimensions, careers };
+	const request = {
+		assessment_id: payload.assessmentId,
+		career_interests: [...payload.careerInterests],
+		dimensions,
+		careers
+	};
 	validateInitialAssessmentRequest(request);
 	return request;
 }
@@ -123,10 +141,17 @@ export function validateInitialAssessmentRequest(
 	}
 	const body = value as Record<string, unknown>;
 	if (
-		Object.keys(body).sort().join(',') !== 'assessment_id,careers,dimensions' ||
+		Object.keys(body).sort().join(',') !== 'assessment_id,career_interests,careers,dimensions' ||
 		typeof body.assessment_id !== 'string' ||
 		!/^assessment-[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
 			body.assessment_id
+		) ||
+		!Array.isArray(body.career_interests) ||
+		body.career_interests.length < 1 ||
+		body.career_interests.length > 3 ||
+		new Set(body.career_interests).size !== body.career_interests.length ||
+		body.career_interests.some(
+			(id) => !careerInterestOptions.some((interest) => interest.id === id)
 		) ||
 		!Array.isArray(body.dimensions) ||
 		body.dimensions.length !== 28 ||
@@ -208,15 +233,20 @@ export function validateInitialAssessmentResponse(
 	if (!value || typeof value !== 'object')
 		throw new InitialAssessmentError('invalid-response', 'Phản hồi đánh giá không hợp lệ.');
 	const body = value as Record<string, unknown>;
-	if (Object.keys(body).sort().join(',') !== 'assessment_id,results')
+	if (
+		Object.keys(body).sort().join(',') !== 'assessment_id,results' &&
+		Object.keys(body).sort().join(',') !== 'assessment_id,results,stage_insights' &&
+		Object.keys(body).sort().join(',') !== 'assessment_id,career_suggestions,results,stage_insights'
+	)
 		throw new InitialAssessmentError(
 			'invalid-response',
 			'Phản hồi đánh giá có dữ liệu không được hỗ trợ.'
 		);
+	const hasSuggestions = body.career_suggestions !== undefined;
 	if (
 		body.assessment_id !== request.assessment_id ||
 		!Array.isArray(body.results) ||
-		body.results.length !== request.careers.length
+		body.results.length !== (hasSuggestions ? 0 : request.careers.length)
 	)
 		throw new InitialAssessmentError(
 			'invalid-response',
@@ -247,7 +277,75 @@ export function validateInitialAssessmentResponse(
 	});
 	if (new Set(results.map((result) => result.career_id)).size !== results.length)
 		throw new InitialAssessmentError('invalid-response', 'Kết quả bị trùng nghề nghiệp.');
-	return { assessment_id: body.assessment_id as string, results };
+	if (body.stage_insights !== undefined) {
+		validateStageInsights(body.stage_insights);
+	}
+	if (hasSuggestions)
+		validateInitialCareerSuggestions(body.career_suggestions, request.career_interests);
+	return {
+		assessment_id: body.assessment_id as string,
+		results,
+		...(body.stage_insights === undefined
+			? {}
+			: { stage_insights: body.stage_insights as Record<StageId, InitialStageInsight> }),
+		...(hasSuggestions
+			? { career_suggestions: body.career_suggestions as InitialCareerSuggestion[] }
+			: {})
+	};
+}
+
+export function validateInitialCareerSuggestions(
+	value: unknown,
+	interests?: readonly string[]
+): asserts value is InitialCareerSuggestion[] {
+	// Suggestions are drawn only from the selected fields unless the participant is exploring.
+	const allowed = interests && !interests.includes('exploring') ? new Set<string>(interests) : null;
+	if (!Array.isArray(value) || value.length < 1 || value.length > 3)
+		throw new InitialAssessmentError('invalid-response', 'Gợi ý nghề nghiệp không hợp lệ.');
+	const seen = new Set<string>();
+	for (const item of value) {
+		if (!item || typeof item !== 'object' || Array.isArray(item))
+			throw new InitialAssessmentError('invalid-response', 'Gợi ý nghề nghiệp không hợp lệ.');
+		const suggestion = item as Record<string, unknown>;
+		const career = suggestionCareers.find((entry) => entry.id === suggestion.id);
+		if (
+			Object.keys(suggestion).sort().join(',') !== 'description,id,name' ||
+			!career ||
+			(allowed && !allowed.has(career.interestGroup)) ||
+			suggestion.name !== career.name ||
+			seen.has(career.id) ||
+			typeof suggestion.description !== 'string' ||
+			!suggestion.description.trim() ||
+			suggestion.description.length > 1200 ||
+			/\bVR\b|\bUser Safety\b|\d+\s*%/i.test(suggestion.description)
+		)
+			throw new InitialAssessmentError('invalid-response', 'Gợi ý nghề nghiệp không hợp lệ.');
+		seen.add(career.id);
+	}
+}
+
+export function validateStageInsights(
+	value: unknown
+): asserts value is Record<StageId, InitialStageInsight> {
+	if (!value || typeof value !== 'object' || Array.isArray(value))
+		throw new InitialAssessmentError('invalid-response', 'Nhận định DESMAP không hợp lệ.');
+	const stages = ['D', 'E', 'S', 'M', 'A', 'P'];
+	const insights = value as Record<string, unknown>;
+	if (Object.keys(insights).sort().join(',') !== [...stages].sort().join(','))
+		throw new InitialAssessmentError('invalid-response', 'Nhận định DESMAP chưa đủ sáu nhóm.');
+	for (const stage of stages) {
+		const insight = insights[stage];
+		if (!insight || typeof insight !== 'object' || Array.isArray(insight))
+			throw new InitialAssessmentError('invalid-response', 'Nhận định DESMAP không hợp lệ.');
+		const fields = insight as Record<string, unknown>;
+		if (
+			Object.keys(fields).sort().join(',') !== 'assessment,strength,weakness' ||
+			Object.values(fields).some(
+				(field) => typeof field !== 'string' || !field.trim() || field.length > 1600
+			)
+		)
+			throw new InitialAssessmentError('invalid-response', 'Nhận định DESMAP không hợp lệ.');
+	}
 }
 
 export function calculateInitialAssessment(
@@ -342,6 +440,12 @@ export async function fetchInitialAssessment(
 	} catch {
 		throw new InitialAssessmentError('recoverable', 'Không thể kết nối tới dịch vụ đánh giá.');
 	}
+	if (response.status === 429)
+		throw new InitialAssessmentError(
+			'recoverable',
+			'OpenRouter đang giới hạn lượt phân tích. Vui lòng thử lại sau ít phút.',
+			response.status
+		);
 	if (response.status === 502 || response.status === 503)
 		throw new InitialAssessmentError(
 			'recoverable',
@@ -404,4 +508,20 @@ export async function runInitialAssessment(
 
 export function browserAssessmentStorage(): AssessmentStorage | null {
 	return typeof window === 'undefined' ? null : window.sessionStorage;
+}
+
+export async function uploadInitialAssessment(
+	response: InitialAssessmentResponse,
+	fetcher: AssessmentFetch = fetch
+): Promise<boolean> {
+	try {
+		const result = await fetcher('/api/initial-evaluations', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify(response)
+		});
+		return result.ok;
+	} catch {
+		return false;
+	}
 }

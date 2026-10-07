@@ -1,7 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { QuestionnaireSubmission } from '$lib/questionnaire';
 import { finalDimensionDefinitions } from '$lib/evaluation/final-dimension-content';
-import { parseStoredFinalEvaluation } from './final-evaluations';
+import { parseStoredFinalEvaluation, findFinalEvaluation } from './final-evaluations';
+import { buildCompletionPayload, desmapQuestions } from '$lib/questionnaire';
+import { rankCareerSuggestions, careerEvidenceDescription } from '$lib/assessment/career-ranking';
+import { careerObservations } from './career-observations';
+
+const mongo = vi.hoisted(() => vi.fn());
+vi.mock('./mongodb', () => ({ getMongoDatabase: mongo }));
 
 const submission = {
 	assessmentId: 'assessment-123',
@@ -56,6 +62,89 @@ function storedEvaluation() {
 }
 
 describe('stored final evaluation parser', () => {
+	it('recalculates old Mongo careers from the matching questionnaire and completed VR without writes', async () => {
+		const payload = buildCompletionPayload({
+			assessmentId: 'assessment-123e4567-e89b-42d3-a456-426614174000',
+			participant: submission.participant,
+			careerInterests: ['technology-engineering'],
+			answers: Object.fromEntries(
+				desmapQuestions.map((question) => [question.id, question.options[0].letter])
+			),
+			startedAt: '2026-09-12T08:00:00.000Z'
+		});
+		const records = [
+			{
+				gameId: 'lawyer',
+				status: 'completed',
+				data: { lawyer: { criterionScores: { evidenceUse: 32, logicalConnections: 28 } } }
+			}
+		];
+		const finalCollection = {
+			find: vi.fn(() => ({
+				sort: () => ({ limit: () => ({ toArray: async () => [storedEvaluation()] }) })
+			}))
+		};
+		const gameCollection = {
+			distinct: vi.fn(async () => [submission.participant.name]),
+			find: vi.fn((query: unknown) => {
+				void query;
+				return { toArray: async () => records };
+			})
+		};
+		const identityCollection = { distinct: vi.fn(async () => [submission.participant.email]) };
+		mongo.mockResolvedValue({
+			collection: (name: string) =>
+				name === 'final_evaluations'
+					? finalCollection
+					: name === 'game_results'
+						? gameCollection
+						: identityCollection
+		});
+		const result = await findFinalEvaluation(payload);
+		const ranked = rankCareerSuggestions(
+			Object.entries(payload.scores.groups).map(([id, value]) => ({ id, score: value.percent })),
+			careerObservations(records),
+			payload.careerInterests,
+			7
+		);
+		expect(result?.careerSuggestions).toEqual(
+			ranked.map((item, index) => ({
+				id: item.career.id,
+				name: item.career.name,
+				compatibilityPercent: item.compatibilityPercent,
+				description: careerEvidenceDescription(item, index === 0)
+			}))
+		);
+		expect(gameCollection.find.mock.calls[0][0]).toMatchObject({
+			participantName: submission.participant.name,
+			status: 'completed',
+			$and: [
+				{ $or: [{ assessmentId: payload.assessmentId }, { assessmentId: { $exists: false } }] },
+				{
+					$or: [
+						{ participantEmail: submission.participant.email },
+						{ participantEmail: { $exists: false } }
+					]
+				}
+			]
+		});
+		gameCollection.distinct.mockResolvedValue([
+			submission.participant.name,
+			submission.participant.name.toLocaleUpperCase('vi')
+		]);
+		expect((await findFinalEvaluation(payload))?.careerSuggestions).toEqual(
+			storedEvaluation().careerSuggestions
+		);
+		gameCollection.distinct.mockResolvedValue([submission.participant.name]);
+		identityCollection.distinct.mockResolvedValue(['other@example.com']);
+		expect((await findFinalEvaluation(payload))?.careerSuggestions).toEqual(
+			storedEvaluation().careerSuggestions
+		);
+		gameCollection.distinct.mockRejectedValueOnce(new Error('telemetry unavailable'));
+		expect((await findFinalEvaluation(payload))?.careerSuggestions).toEqual(
+			storedEvaluation().careerSuggestions
+		);
+	});
 	it('attaches the matching questionnaire assessment id to the stored final evaluation', () => {
 		const parsed = parseStoredFinalEvaluation(storedEvaluation(), submission);
 		expect(parsed).toMatchObject({

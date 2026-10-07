@@ -1,8 +1,16 @@
 import { MongoServerError, type Collection } from 'mongodb';
 import type { QuestionnaireSubmission } from '$lib/questionnaire';
+import type { InitialCareerSuggestion, InitialStageInsight } from '$lib/assessment';
+import type { StageId } from '$lib/questionnaire';
 import { getMongoDatabase } from './mongodb';
 
 type StoredQuestionnaireSubmission = QuestionnaireSubmission & {
+	initialEvaluation?: {
+		version: 1;
+		stageInsights: Record<StageId, InitialStageInsight>;
+		careerSuggestions: InitialCareerSuggestion[];
+		savedAt: Date;
+	};
 	normalizedEmail: string;
 	syncStatus: 'synced';
 	createdAt: Date;
@@ -110,4 +118,27 @@ export async function saveQuestionnaireSubmission(
 		if (raced?.assessmentId === payload.assessmentId) return 'updated';
 		return 'conflict';
 	}
+}
+
+export async function saveInitialEvaluation(
+	assessmentId: string,
+	stageInsights: Record<StageId, InitialStageInsight>,
+	careerSuggestions: InitialCareerSuggestion[]
+): Promise<boolean> {
+	const collection = await getCollection();
+	const result = await collection.updateOne(
+		{ assessmentId },
+		{
+			$set: {
+				initialEvaluation: {
+					version: 1,
+					stageInsights,
+					careerSuggestions,
+					savedAt: new Date()
+				},
+				updatedAt: new Date()
+			}
+		}
+	);
+	return result.matchedCount === 1;
 }

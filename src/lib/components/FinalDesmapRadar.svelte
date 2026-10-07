@@ -1,14 +1,19 @@
 <script lang="ts">
 	import { prefersReducedMotion } from 'svelte/motion';
 	import { fly } from 'svelte/transition';
+	import type { InitialStageInsight } from '$lib/assessment';
 	import type { QuestionnaireScores, StageId } from '$lib/questionnaire';
 
 	let {
 		scores,
-		assessments = {}
+		assessments = {},
+		insights = undefined,
+		initial = false
 	}: {
 		scores: QuestionnaireScores;
 		assessments?: Partial<Record<StageId, string>>;
+		insights?: Partial<Record<StageId, InitialStageInsight>>;
+		initial?: boolean;
 	} = $props();
 
 	type RadarStage = {
@@ -89,7 +94,16 @@
 		if (!stage) return null;
 		return {
 			...stage,
-			assessment: assessments[stage.id]?.trim() || stage.assessment
+			assessment:
+				insights?.[stage.id]?.assessment?.trim() ||
+				assessments[stage.id]?.trim() ||
+				(initial ? 'Chưa có nhận định AI cho nhóm này.' : stage.assessment),
+			strength:
+				insights?.[stage.id]?.strength?.trim() ||
+				(initial ? 'Chưa có nhận định AI.' : stage.strength),
+			weakness:
+				insights?.[stage.id]?.weakness?.trim() ||
+				(initial ? 'Chưa có nhận định AI.' : stage.weakness)
 		};
 	});
 	let scorePoints = $derived(

@@ -40,7 +40,9 @@ export const actions = {
 			});
 
 			return { success: true as const, submission };
-		} catch {
+		} catch (error) {
+			// The participant only sees a generic message; keep the cause in the server log.
+			console.error('Participant login failed to read MongoDB:', error);
 			return fail(503, {
 				success: false as const,
 				name: participant.name,

@@ -1,0 +1,40 @@
+{
+	"runId": "synthetic-v3-restored",
+	"gameId": "sale",
+	"status": "completed",
+	"data": {
+		"part2": {
+			"pipelineVersion": "sales-openrouter-v3",
+			"rubricVersion": "sales-rubric-v3",
+			"scenarioVersion": "returning-shoes-v2",
+			"questionSetVersion": "sales-jev-v3",
+			"thresholdVersion": "sales-thresholds-v2.1",
+			"promptVersion": "lan-writer-v3",
+			"assessmentStatus": "completed",
+			"endingReason": "objectives_completed",
+			"resolutionAccepted": false,
+			"turns": [],
+			"rawScore": 100,
+			"policyViolationPenalty": 0,
+			"policyViolations": [],
+			"score": 100,
+			"customerRating": "good",
+			"criterionScores": {
+				"apologyAndPolicyRemedy": 50,
+				"adaptabilityAndDeescalation": 50
+			},
+			"trustState": "restored",
+			"finalCustomerText": null,
+			"goodResponseCount": 0,
+			"badResponseCount": 0,
+			"emotionalHandling": true,
+			"causeIdentification": true,
+			"solutionSuitability": true,
+			"trustRebuilding": true,
+			"completionReason": "objectives_completed",
+			"acceptedTurnCount": 7,
+			"silenceCount": 0,
+			"completedAtUtc": null
+		}
+	}
+}

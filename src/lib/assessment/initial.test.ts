@@ -1,3 +1,4 @@
+import catalog from './career-catalog.json';
 import { describe, expect, it, vi } from 'vitest';
 import {
 	assessmentCareers,
@@ -7,6 +8,7 @@ import {
 	type AssessmentConfig
 } from './config';
 import {
+	browserAssessmentStorage,
 	buildInitialAssessmentRequest,
 	calculateInitialAssessment,
 	initialAssessmentCacheKey,
@@ -15,6 +17,7 @@ import {
 	readCachedInitialAssessment,
 	requestFingerprint,
 	runInitialAssessment,
+	uploadInitialAssessment,
 	validateInitialAssessmentResponse,
 	writeCachedInitialAssessment,
 	type AssessmentStorage,
@@ -74,17 +77,14 @@ function jsonResponse(body: unknown, status = 200): Response {
 }
 
 describe('initial assessment configuration', () => {
-	it('contains the approved 28-by-5 weight matrix', () => {
+	it('uses the shared reviewed career profiles for provisional matches', () => {
 		validateAssessmentConfig();
 		expect(assessmentConfig.dimensions).toHaveLength(28);
 		expect(assessmentConfig.careers).toHaveLength(5);
-		const expected = [
-			[3, 5, 2, 5, 2, 2, 5, 5, 5, 3, 4, 4, 5, 5, 2, 5, 3, 5, 4, 5, 4, 5, 5, 5, 5, 5, 4, 5],
-			[3, 4, 4, 4, 4, 2, 5, 5, 5, 1, 4, 4, 5, 3, 4, 5, 4, 4, 4, 5, 4, 5, 5, 5, 5, 4, 5, 5],
-			[2, 5, 3, 5, 3, 3, 5, 4, 5, 2, 4, 4, 4, 5, 2, 4, 5, 5, 4, 4, 5, 4, 4, 4, 4, 5, 5, 4],
-			[5, 4, 4, 3, 5, 2, 4, 4, 5, 2, 3, 5, 4, 5, 4, 4, 4, 5, 3, 5, 4, 5, 5, 5, 4, 5, 5, 4],
-			[4, 5, 4, 3, 3, 3, 4, 5, 3, 5, 5, 4, 5, 3, 3, 5, 4, 5, 4, 5, 5, 5, 4, 4, 5, 3, 3, 5]
-		];
+		const expected = assessmentCareers.map((career) => {
+			const weights = catalog.careers.find((item) => item.id === career.id)!.weights;
+			return assessmentConfig.dimensions.map(({ id }) => Math.round(weights[id]));
+		});
 		expect(
 			assessmentCareers.map((career) =>
 				assessmentConfig.dimensions.map((dimension) => career.weights[dimension.id])
@@ -149,6 +149,7 @@ describe('request and response contract', () => {
 			assessmentConfig.dimensions.map((item) => payload.scores.groups[item.id].percent)
 		);
 		expect(request.careers.every((career) => career.criteria.length === 28)).toBe(true);
+		expect(request.career_interests).toEqual(['science-research', 'law-public-service']);
 		expect(JSON.stringify(request)).not.toContain('scores');
 		expect(JSON.stringify(request)).not.toContain('answers');
 	});
@@ -176,6 +177,51 @@ describe('request and response contract', () => {
 				InitialAssessmentError
 			);
 		}
+	});
+
+	it('accepts AI career suggestions without weighted matches and rejects unsupported claims', () => {
+		const request = buildInitialAssessmentRequest(questionnaire(['science-research']));
+		const stageInsights = Object.fromEntries(
+			['D', 'E', 'S', 'M', 'A', 'P'].map((stage) => [
+				stage,
+				{
+					assessment: `Nhận định ${stage}.`,
+					strength: `Điểm mạnh ${stage}.`,
+					weakness: `Cần phát triển ${stage}.`
+				}
+			])
+		);
+		const valid = {
+			assessment_id: request.assessment_id,
+			results: [],
+			stage_insights: stageInsights,
+			career_suggestions: [
+				{
+					id: 'chuyen-vien-thong-ke',
+					name: 'Chuyên viên thống kê',
+					description: 'Bạn có thể tìm hiểu nghề thống kê.'
+				}
+			]
+		};
+		expect(validateInitialAssessmentResponse(valid, request)).toEqual(valid);
+		for (const career_suggestions of [
+			[{ ...valid.career_suggestions[0], id: 'unknown' }],
+			[{ id: 'lawyer', name: 'Luật sư', description: 'Bạn có thể tìm hiểu nghề luật.' }],
+			[{ ...valid.career_suggestions[0], name: 'Sai tên' }],
+			[valid.career_suggestions[0], valid.career_suggestions[0]],
+			[{ ...valid.career_suggestions[0], description: 'Trong VR bạn đã làm tốt.' }],
+			[{ ...valid.career_suggestions[0], description: 'Bạn phù hợp 90%.' }]
+		]) {
+			expect(() =>
+				validateInitialAssessmentResponse({ ...valid, career_suggestions }, request)
+			).toThrow(InitialAssessmentError);
+		}
+		expect(() =>
+			validateInitialAssessmentResponse(
+				{ ...valid, results: responseFor(request).results },
+				request
+			)
+		).toThrow(InitialAssessmentError);
 	});
 
 	it('sorts a copy descending and keeps request order for ties', () => {
@@ -223,6 +269,28 @@ describe('request and response contract', () => {
 });
 
 describe('cache and network boundary', () => {
+	it('keeps the AI result in sessionStorage', () => {
+		const sessionStorage = memoryStorage().storage;
+		const localStorage = memoryStorage().storage;
+		vi.stubGlobal('window', { sessionStorage, localStorage });
+		try {
+			expect(browserAssessmentStorage()).toBe(sessionStorage);
+		} finally {
+			vi.unstubAllGlobals();
+		}
+	});
+
+	it('sends a completed AI result for MongoDB synchronization', async () => {
+		const response = responseFor(buildInitialAssessmentRequest(questionnaire()));
+		const fetcher = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }));
+		expect(await uploadInitialAssessment(response, fetcher)).toBe(true);
+		expect(fetcher).toHaveBeenCalledWith('/api/initial-evaluations', {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify(response)
+		});
+	});
+
 	it('reuses a matching success without calling the network', async () => {
 		const payload = questionnaire();
 		const request = buildInitialAssessmentRequest(payload);
@@ -247,7 +315,8 @@ describe('cache and network boundary', () => {
 		changedScore.dimensions[0].score += 1;
 		const changedCareer = buildInitialAssessmentRequest(questionnaire(['law-public-service']));
 		const changedWeight = structuredClone(request);
-		changedWeight.careers[0].criteria[0].importance = 1;
+		changedWeight.careers[0].criteria[0].importance =
+			changedWeight.careers[0].criteria[0].importance === 1 ? 5 : 1;
 		const mismatchedId = structuredClone(request);
 		mismatchedId.assessment_id = 'assessment-00000000-0000-4000-8000-000000000000';
 		const { storage, values } = memoryStorage();
@@ -321,6 +390,7 @@ describe('cache and network boundary', () => {
 	});
 
 	it.each([
+		[429, 'recoverable'],
 		[502, 'recoverable'],
 		[503, 'recoverable'],
 		[401, 'configuration'],
@@ -332,6 +402,18 @@ describe('cache and network boundary', () => {
 				fetcher: async () => jsonResponse({ error: 'failure' }, status)
 			})
 		).rejects.toMatchObject({ kind, status });
+	});
+
+	it('explains an exhausted OpenRouter retry window', async () => {
+		await expect(
+			runInitialAssessment(questionnaire(), {
+				fetcher: async () => jsonResponse({ error: 'rate limited' }, 429)
+			})
+		).rejects.toMatchObject({
+			kind: 'recoverable',
+			status: 429,
+			message: 'OpenRouter đang giới hạn lượt phân tích. Vui lòng thử lại sau ít phút.'
+		});
 	});
 
 	it('classifies network failures and invalid JSON', async () => {

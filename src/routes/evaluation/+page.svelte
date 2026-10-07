@@ -2,16 +2,14 @@
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
 	import type { PageProps } from './$types';
-	import { ArrowRight, Download, RefreshCw } from '@lucide/svelte';
+	import { ArrowRight, RefreshCw } from '@lucide/svelte';
 	import FinalBehaviourComparison from '$lib/components/FinalBehaviourComparison.svelte';
-	import GroupedDesmapProfile from '$lib/components/GroupedDesmapProfile.svelte';
 	import FinalCareerSuggestions from '$lib/components/FinalCareerSuggestions.svelte';
 	import FinalDimensionDetails from '$lib/components/FinalDimensionDetails.svelte';
 	import FinalDesmapRadar from '$lib/components/FinalDesmapRadar.svelte';
 	import FinalUserEvaluation from '$lib/components/FinalUserEvaluation.svelte';
 	import FinalEvaluationSkeleton from '$lib/components/FinalEvaluationSkeleton.svelte';
 	import Header from '$lib/components/Header.svelte';
-	import InitialMatchPanel from '$lib/components/InitialMatchPanel.svelte';
 	import {
 		evaluationPageState,
 		experiences,
@@ -23,6 +21,7 @@
 		browserAssessmentStorage,
 		InitialAssessmentError,
 		runInitialAssessment,
+		uploadInitialAssessment,
 		type AssessmentErrorKind,
 		type InitialAssessmentResponse
 	} from '$lib/assessment';
@@ -41,15 +40,14 @@
 
 	let payload = $state<QuestionnaireSubmission | null>(null);
 	let response = $state<InitialAssessmentResponse | null>(null);
-	let rankedResults = $state<InitialAssessmentResponse['results']>([]);
 	let viewState = $state<'loading' | 'success' | 'error' | 'empty'>('loading');
 	let errorKind = $state<AssessmentErrorKind | null>(null);
 	let errorMessage = $state('');
-	let copied = $state(false);
-	let notice = $state('');
 	let requestInFlight = $state(false);
 	let syncStatus = $state<QuestionnaireSyncStatus | null>(null);
 	let syncInFlight = $state(false);
+	let initialSyncTask: Promise<void> | null = null;
+	let initialSynced = false;
 	let dimensionsExpanded = $state(false);
 	let finalAssessmentResult = $state<FinalAssessment | null>(null);
 	let finalLookupCompleted = $state(false);
@@ -59,10 +57,9 @@
 			(data.previewFinal && payload ? createPreviewFinalAssessment(payload) : null)
 	);
 	let pageState = $derived(evaluationPageState(payload, finalAssessment));
+	let topCareerId = $derived(response?.career_suggestions?.[0]?.id);
 	const target = $derived(
-		rankedResults[0]
-			? experiences.find((experience) => experience.slug === rankedResults[0].career_id)
-			: null
+		topCareerId ? experiences.find((experience) => experience.slug === topCareerId) : null
 	);
 
 	function createPreviewFinalAssessment(submission: QuestionnaireSubmission): FinalAssessment {
@@ -135,7 +132,9 @@
 	async function loadAssessment(retry = false) {
 		if (requestInFlight || !payload) return;
 		requestInFlight = true;
+		initialSynced = false;
 		viewState = 'loading';
+		response = null;
 		errorKind = null;
 		errorMessage = '';
 		try {
@@ -144,9 +143,17 @@
 				skipCache: retry,
 				mode: data.initialAssessmentMode
 			});
+			if (!result.response.stage_insights || !result.response.career_suggestions?.length) {
+				throw new InitialAssessmentError(
+					data.initialAssessmentMode === 'weighted' ? 'configuration' : 'invalid-response',
+					data.initialAssessmentMode === 'weighted'
+						? 'Chế độ thử nghiệm không tạo nhận định AI. Hãy bật phân tích AI.'
+						: 'Chưa có đủ nhận định DESMAP và gợi ý nghề từ AI. Hãy thử lại.'
+				);
+			}
 			response = result.response;
-			rankedResults = result.rankedResults;
 			viewState = 'success';
+			void syncInitialAssessment();
 		} catch (error) {
 			viewState = 'error';
 			errorKind = error instanceof InitialAssessmentError ? error.kind : 'invalid-response';
@@ -159,12 +166,33 @@
 		}
 	}
 
+	async function syncInitialAssessment(retryAfterPending = false) {
+		if (
+			data.initialAssessmentMode !== 'ai' ||
+			!response?.career_suggestions?.length ||
+			initialSynced
+		)
+			return;
+		if (initialSyncTask) {
+			await initialSyncTask;
+			if (initialSynced || !retryAfterPending) return;
+		}
+		const assessment = response;
+		initialSyncTask = (async () => {
+			initialSynced = await uploadInitialAssessment(assessment);
+		})().finally(() => {
+			initialSyncTask = null;
+		});
+		await initialSyncTask;
+	}
+
 	async function syncSubmission() {
 		if (!payload || syncInFlight) return;
 		syncInFlight = true;
 		syncStatus = { assessmentId: payload.assessmentId, status: 'pending' };
 		syncStatus = await uploadQuestionnaireSubmission(payload);
 		syncInFlight = false;
+		if (syncStatus.status === 'synced') void syncInitialAssessment(true);
 	}
 
 	onMount(() => {
@@ -203,57 +231,16 @@
 			else void loadAssessment();
 		}
 	}
-
-	function showNotice(message: string) {
-		notice = message;
-		window.setTimeout(() => (notice = ''), 2400);
-	}
-
-	function saveJson() {
-		if (!payload || (!response && !finalAssessment)) return;
-		const isFinal = evaluationPageState(payload, finalAssessment) === 'final';
-		const exportData = {
-			format: isFinal ? 'Đánh giá cuối cùng DESMAP' : 'Đối chiếu nghề nghiệp ban đầu DESMAP',
-			assessment_id: payload.assessmentId,
-			questionnaire: payload,
-			initial_assessment: response,
-			final_assessment: isFinal ? finalAssessment : undefined
-		};
-		const url = URL.createObjectURL(
-			new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
-		);
-		const link = document.createElement('a');
-		link.href = url;
-		link.download = `desmap-${isFinal ? 'final' : 'initial'}-${payload.assessmentId}.json`;
-		link.click();
-		URL.revokeObjectURL(url);
-		showNotice(isFinal ? 'Đã tải đánh giá cuối cùng.' : 'Đã tải kết quả đối chiếu ban đầu.');
-	}
-
-	async function copySummary() {
-		if (!rankedResults.length) return;
-		const text = `Kết quả đối chiếu nghề nghiệp ban đầu DESMAP\n${rankedResults
-			.map((item) => `${item.career_name}: ${item.match_percentage}%`)
-			.join('\n')}`;
-		try {
-			await navigator.clipboard.writeText(text);
-			copied = true;
-			window.setTimeout(() => (copied = false), 2400);
-		} catch {
-			showNotice('Không thể sao chép trong trình duyệt này.');
-		}
-	}
 </script>
 
 <svelte:head>
-	<title
-		>{pageState === 'final' ? 'Đánh giá cuối cùng' : 'Đối chiếu nghề nghiệp ban đầu'} | DESMAP</title
+	<title>{pageState === 'final' ? 'Đánh giá cuối cùng' : 'Phân tích DESMAP ban đầu'} | DESMAP</title
 	>
 	<meta
 		name="description"
 		content={pageState === 'final'
 			? 'Đánh giá cuối cùng kết hợp hồ sơ DESMAP và bằng chứng quan sát.'
-			: 'Đối chiếu ban đầu giữa điểm DESMAP và các nghề bạn chọn.'}
+			: 'Phân tích DESMAP ban đầu từ câu trả lời của bạn.'}
 	/>
 </svelte:head>
 
@@ -270,16 +257,16 @@
 		{#if pageState !== 'final' && !finalLookupPending}
 			<section class="border-b border-white/14 py-12">
 				<p class="m-0 text-[.68rem] font-[760] tracking-[.16em] text-lime uppercase">
-					02 / ĐỐI CHIẾU NGHỀ NGHIỆP BAN ĐẦU
+					02 / ĐÁNH GIÁ BAN ĐẦU
 				</p>
 				<h1
 					class="mt-3 mb-4 max-w-[820px] text-[clamp(2.5rem,7vw,5.8rem)] leading-[.92] font-[760] tracking-[-.065em]"
 				>
-					Hồ sơ tự báo cáo
+					Phân tích DESMAP
 				</h1>
 				<p class="m-0 max-w-[760px] text-[1.05rem] leading-[1.55] text-[#91a0b4]">
-					Các phần trăm là kết quả đối chiếu tạm thời từ câu trả lời của bạn. Đây không phải khuyến
-					nghị nghề nghiệp hay kết luận cuối cùng.
+					Nhận định dựa trên câu trả lời của bạn trong bảng câu hỏi. Kết quả này chưa bao gồm quan
+					sát trong trải nghiệm VR và chưa phải đánh giá cuối cùng.
 				</p>
 			</section>
 		{/if}
@@ -322,92 +309,40 @@
 		{:else if finalLookupPending}
 			<FinalEvaluationSkeleton />
 		{:else if viewState === 'loading'}
-			<section class="mt-8">
-				<p class="sr-only" aria-live="polite" role="status">
-					Đang chuẩn bị kết quả đối chiếu nghề nghiệp.
+			<section class="py-[clamp(2.5rem,5vw,4.5rem)]">
+				<p class="text-[#91a0b4]" aria-live="polite" role="status">
+					Đang phân tích các nhóm DESMAP và chuẩn bị gợi ý nghề từ câu trả lời của bạn...
 				</p>
-				<div>
-					<!-- <div class="flex justify-end">
-						<span class="skeleton h-9 w-52 border border-blue/50"></span>
-					</div> -->
-
-					<div class="mt-3 grid gap-4 min-[850px]:grid-cols-[1.15fr_.85fr]">
-						<div class="border border-blue bg-[#071020] p-6" aria-hidden="true">
-							<span
-								class="relative block h-7 w-52 max-w-full overflow-hidden bg-blue/18 after:absolute after:inset-0 after:translate-x-[-110%] after:animate-skeleton-scan after:bg-[linear-gradient(100deg,transparent_20%,rgb(188_255_99_/.18)_48%,transparent_76%)] after:content-[''] motion-reduce:after:translate-x-0 motion-reduce:after:animate-none motion-reduce:after:opacity-35"
-							></span>
-							<span
-								class="relative mt-3 block h-3 w-[78%] overflow-hidden bg-blue/18 after:absolute after:inset-0 after:translate-x-[-110%] after:animate-skeleton-scan after:bg-[linear-gradient(100deg,transparent_20%,rgb(188_255_99_/.18)_48%,transparent_76%)] after:content-[''] motion-reduce:after:translate-x-0 motion-reduce:after:animate-none motion-reduce:after:opacity-35"
-							></span>
-							{#each { length: 5 }, index}
-								<div
-									class="grid grid-cols-[1.6rem_minmax(7rem,auto)_1fr_3rem] items-center gap-2 border-b border-white/14 py-4 max-[560px]:grid-cols-[1.5rem_1fr_3rem]"
-								>
-									<span
-										class="relative block size-5 overflow-hidden rounded-full bg-blue/18 after:absolute after:inset-0 after:translate-x-[-110%] after:animate-skeleton-scan after:bg-[linear-gradient(100deg,transparent_20%,rgb(188_255_99_/.18)_48%,transparent_76%)] after:content-[''] motion-reduce:after:translate-x-0 motion-reduce:after:animate-none motion-reduce:after:opacity-35"
-									></span>
-									<span
-										class="relative block h-4 w-28 max-w-full overflow-hidden bg-blue/18 after:absolute after:inset-0 after:translate-x-[-110%] after:animate-skeleton-scan after:bg-[linear-gradient(100deg,transparent_20%,rgb(188_255_99_/.18)_48%,transparent_76%)] after:content-[''] motion-reduce:after:translate-x-0 motion-reduce:after:animate-none motion-reduce:after:opacity-35"
-									></span>
-									<span class="h-2 bg-blue/20 max-[560px]:col-span-3">
-										<span
-											class="relative block h-full overflow-hidden bg-blue/18 after:absolute after:inset-0 after:translate-x-[-110%] after:animate-skeleton-scan after:bg-[linear-gradient(100deg,transparent_20%,rgb(188_255_99_/.18)_48%,transparent_76%)] after:content-[''] motion-reduce:after:translate-x-0 motion-reduce:after:animate-none motion-reduce:after:opacity-35"
-											style:width={`${82 - index * 9}%`}
-										></span>
-									</span>
-									<span
-										class="relative block h-5 w-10 justify-self-end overflow-hidden bg-blue/18 after:absolute after:inset-0 after:translate-x-[-110%] after:animate-skeleton-scan after:bg-[linear-gradient(100deg,transparent_20%,rgb(188_255_99_/.18)_48%,transparent_76%)] after:content-[''] motion-reduce:after:translate-x-0 motion-reduce:after:animate-none motion-reduce:after:opacity-35"
-									></span>
-								</div>
-							{/each}
-						</div>
-
-						{#if payload}
-							<GroupedDesmapProfile scores={payload.scores} />
-						{:else}
-							<div class="border border-blue bg-[#071020] p-6" aria-hidden="true">
-								<span
-									class="relative block h-7 w-40 overflow-hidden bg-blue/18 after:absolute after:inset-0 after:translate-x-[-110%] after:animate-skeleton-scan after:bg-[linear-gradient(100deg,transparent_20%,rgb(188_255_99_/.18)_48%,transparent_76%)] after:content-[''] motion-reduce:after:translate-x-0 motion-reduce:after:animate-none motion-reduce:after:opacity-35"
-								></span>
-								<span
-									class="relative mt-3 block h-3 w-[68%] overflow-hidden bg-blue/18 after:absolute after:inset-0 after:translate-x-[-110%] after:animate-skeleton-scan after:bg-[linear-gradient(100deg,transparent_20%,rgb(188_255_99_/.18)_48%,transparent_76%)] after:content-[''] motion-reduce:after:translate-x-0 motion-reduce:after:animate-none motion-reduce:after:opacity-35"
-								></span>
-								{#each { length: 6 }, index}
-									<div class="flex items-center justify-between border-b border-white/14 py-3">
-										<span
-											class="relative block h-4 overflow-hidden bg-blue/18 after:absolute after:inset-0 after:translate-x-[-110%] after:animate-skeleton-scan after:bg-[linear-gradient(100deg,transparent_20%,rgb(188_255_99_/.18)_48%,transparent_76%)] after:content-[''] motion-reduce:after:translate-x-0 motion-reduce:after:animate-none motion-reduce:after:opacity-35"
-											style:width={`${42 + (index % 3) * 8}%`}
-										></span>
-										<span
-											class="relative block h-5 w-10 overflow-hidden bg-blue/18 after:absolute after:inset-0 after:translate-x-[-110%] after:animate-skeleton-scan after:bg-[linear-gradient(100deg,transparent_20%,rgb(188_255_99_/.18)_48%,transparent_76%)] after:content-[''] motion-reduce:after:translate-x-0 motion-reduce:after:animate-none motion-reduce:after:opacity-35"
-										></span>
-									</div>
-								{/each}
-							</div>
-						{/if}
-					</div>
-
+				<div
+					class="mt-8 grid items-center gap-10 min-[760px]:grid-cols-[minmax(16rem,24rem)_1fr]"
+					aria-hidden="true"
+				>
 					<div
-						class="mt-4 flex flex-wrap items-center justify-between gap-5 border border-blue bg-[#071020] p-6"
-						aria-hidden="true"
-					>
-						<div class="min-w-[min(100%,22rem)] flex-1">
-							<span
-								class="relative block h-7 w-40 overflow-hidden bg-blue/18 after:absolute after:inset-0 after:translate-x-[-110%] after:animate-skeleton-scan after:bg-[linear-gradient(100deg,transparent_20%,rgb(188_255_99_/.18)_48%,transparent_76%)] after:content-[''] motion-reduce:after:translate-x-0 motion-reduce:after:animate-none motion-reduce:after:opacity-35"
-							></span>
-							<span
-								class="relative mt-3 block h-3 w-[min(100%,30rem)] overflow-hidden bg-blue/18 after:absolute after:inset-0 after:translate-x-[-110%] after:animate-skeleton-scan after:bg-[linear-gradient(100deg,transparent_20%,rgb(188_255_99_/.18)_48%,transparent_76%)] after:content-[''] motion-reduce:after:translate-x-0 motion-reduce:after:animate-none motion-reduce:after:opacity-35"
-							></span>
-						</div>
-						<div class="flex items-center gap-4">
-							<span
-								class="relative block h-11 w-36 overflow-hidden bg-blue/18 after:absolute after:inset-0 after:translate-x-[-110%] after:animate-skeleton-scan after:bg-[linear-gradient(100deg,transparent_20%,rgb(188_255_99_/.18)_48%,transparent_76%)] after:content-[''] motion-reduce:after:translate-x-0 motion-reduce:after:animate-none motion-reduce:after:opacity-35"
-							></span>
-							<span
-								class="relative block h-4 w-20 overflow-hidden bg-blue/18 after:absolute after:inset-0 after:translate-x-[-110%] after:animate-skeleton-scan after:bg-[linear-gradient(100deg,transparent_20%,rgb(188_255_99_/.18)_48%,transparent_76%)] after:content-[''] motion-reduce:after:translate-x-0 motion-reduce:after:animate-none motion-reduce:after:opacity-35"
-							></span>
-						</div>
+						class="mx-auto aspect-square w-[min(100%,22rem)] animate-pulse rounded-full border border-blue/40 bg-blue/10 motion-reduce:animate-none"
+					></div>
+					<div class="space-y-5">
+						<div
+							class="h-8 w-52 max-w-full animate-pulse bg-blue/20 motion-reduce:animate-none"
+						></div>
+						<div
+							class="h-4 w-full max-w-[44rem] animate-pulse bg-blue/20 motion-reduce:animate-none"
+						></div>
+						<div
+							class="h-4 w-4/5 max-w-[36rem] animate-pulse bg-blue/20 motion-reduce:animate-none"
+						></div>
+						<div
+							class="h-28 w-full max-w-[44rem] animate-pulse border-l border-lime/50 bg-blue/10 motion-reduce:animate-none"
+						></div>
 					</div>
+				</div>
+				<div class="mt-12 space-y-4 border-t border-white/14 pt-8" aria-hidden="true">
+					<div
+						class="h-7 w-64 max-w-full animate-pulse bg-blue/20 motion-reduce:animate-none"
+					></div>
+					<div
+						class="h-4 w-full max-w-[40rem] animate-pulse bg-blue/20 motion-reduce:animate-none"
+					></div>
+					<div class="h-24 w-full animate-pulse bg-blue/10 motion-reduce:animate-none"></div>
 				</div>
 			</section>
 		{:else if viewState === 'error'}
@@ -416,11 +351,11 @@
 				aria-live="assertive"
 				role="alert"
 			>
-				<h2 class="mt-0">Chưa thể hoàn tất đối chiếu</h2>
+				<h2 class="mt-0">Chưa thể tạo đánh giá ban đầu</h2>
 				<p class="text-[#d9c8ad]">
-					{errorMessage} Bảng câu hỏi của bạn vẫn được lưu trên thiết bị.
+					{errorMessage} Kết quả chỉ hiển thị sau khi AI phân tích xong.
 				</p>
-				{#if errorKind === 'recoverable'}
+				{#if errorKind === 'recoverable' || errorKind === 'invalid-response'}
 					<button
 						class="inline-flex cursor-pointer items-center gap-2 border border-lime bg-lime px-5 py-3 font-bold text-[#061006] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-lime disabled:cursor-wait disabled:opacity-60"
 						type="button"
@@ -431,16 +366,9 @@
 					</button>
 				{/if}
 			</section>
-			{#if payload}
-				<div class="mt-4">
-					<GroupedDesmapProfile scores={payload.scores} />
-				</div>
-			{/if}
 		{:else if payload && (response || pageState === 'final')}
 			<p class="sr-only" aria-live="polite" role="status">
-				{pageState === 'final'
-					? 'Đã có đánh giá cuối cùng.'
-					: `Đã có kết quả đối chiếu cho ${rankedResults.length} nghề.`}
+				{pageState === 'final' ? 'Đã có đánh giá cuối cùng.' : 'Đã có phân tích DESMAP ban đầu.'}
 			</p>
 			{#if pageState === 'final' && finalAssessment}
 				<div class="mx-auto max-w-[82rem]" aria-label="Kết quả đánh giá cuối cùng">
@@ -498,16 +426,22 @@
 					</div>
 				</div>
 			{:else}
-				<section
-					class="mt-3 grid gap-4 min-[850px]:grid-cols-[1.15fr_.85fr]"
-					aria-label="Kết quả đối chiếu nghề nghiệp ban đầu"
-				>
-					<InitialMatchPanel mode={data.initialAssessmentMode} matches={rankedResults} />
-					<GroupedDesmapProfile scores={payload.scores} />
+				<section class="py-[clamp(2.5rem,5vw,4.5rem)]" aria-label="Phân tích DESMAP ban đầu">
+					<FinalDesmapRadar scores={payload.scores} insights={response?.stage_insights} initial />
+					{#if response?.career_suggestions?.length}
+						<div
+							class="mt-[clamp(2rem,4vw,4rem)] border-t border-white/14 py-[clamp(2.5rem,5vw,4.5rem)]"
+						>
+							<FinalCareerSuggestions suggestions={response.career_suggestions} initial />
+						</div>
+					{/if}
+					<FinalDimensionDetails
+						scores={payload.scores}
+						expanded={dimensionsExpanded}
+						ontoggle={() => (dimensionsExpanded = !dimensionsExpanded)}
+					/>
 				</section>
 			{/if}
-
-
 
 			<section
 				class={`flex flex-wrap items-center justify-between gap-5 ${pageState === 'final' ? 'mx-auto max-w-[82rem] border-t border-white/14 py-8' : 'mt-4 border border-blue bg-[#071020] p-6'}`}
@@ -521,7 +455,7 @@
 					{:else if data.initialAssessmentMode === 'ai'}
 						<h2 class="mt-0 mb-1 text-lg font-bold">Bước tiếp theo</h2>
 						<p class="m-0 max-w-[34rem] text-[.83rem] text-[#91a0b4]">
-							Bạn có thể xem trải nghiệm của nghề đứng đầu hoặc lưu kết quả này.
+							Bạn có thể khám phá nghề được gợi ý đầu tiên hoặc lưu kết quả này.
 						</p>
 					{:else}
 						<h2 class="mt-0 mb-1 text-lg font-bold">Cảm ơn bạn vì đã tham gia bài test này.</h2>
@@ -550,33 +484,8 @@
 							Khám phá {target.title}<ArrowRight class="size-4" aria-hidden="true" />
 						</a>
 					{/if}
-					<!-- <button
-						class="cursor-pointer border-0 bg-transparent text-lime focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-lime"
-						type="button"
-						onclick={saveJson}
-					>
-						<Download class="inline size-4" aria-hidden="true" /> Tải JSON
-					</button> -->
-					<!-- {#if pageState === 'initial'}
-						<button
-							class="cursor-pointer border-0 bg-transparent text-blue focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-lime"
-							type="button"
-							onclick={copySummary}
-						>
-							{copied ? 'Đã sao chép' : 'Sao chép tóm tắt'}
-						</button>
-					{/if} -->
 				</div>
 			</section>
-		{/if}
-
-		{#if notice}
-			<p
-				class="fixed right-4 bottom-4 border border-lime bg-[#081306] px-4 py-3 text-lime"
-				role="status"
-			>
-				{notice}
-			</p>
 		{/if}
 	</div>
 </main>

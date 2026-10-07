@@ -5,7 +5,8 @@ This context defines the career-assessment language shared by the questionnaire,
 ## Language
 
 **Initial assessment**:
-A questionnaire-only comparison between a participant's self-reported DESMAP profile and the careers selected for evaluation. It is produced before any VR telemetry exists.
+A questionnaire-only interpretation of a participant's self-reported DESMAP profile, with exploratory career directions. It is produced before any VR telemetry exists.
+The validated AI result is cached in browser sessionStorage and stored in the MongoDB questionnaire submission as `initialEvaluation` after the submission is synchronized.
 _Avoid_: Final assessment, career recommendation
 
 **Final assessment**:
@@ -13,16 +14,20 @@ A completed assessment that combines a participant's questionnaire submission wi
 _Avoid_: Initial assessment, questionnaire result
 
 **Career interest**:
-A broad field selected by a participant before answering the questionnaire. It determines which available careers become candidates in the initial assessment.
+A broad field selected by a participant before answering the questionnaire. It determines career candidates for a provisional match comparison and limits initial and final career suggestions to the selected fields, unless the participant is exploring.
 _Avoid_: Career, career match
 
 **Career candidate**:
-An available career selected for the initial assessment through the participant's career interests.
+An available career selected for a provisional match comparison through the participant's career interests.
 _Avoid_: Career interest, recommended career
 
 **Initial career match**:
 A provisional percentage comparing a participant's self-reported grouped DESMAP scores with one career candidate's adjustable criteria. It is not a personal strength assessment or a career recommendation.
 _Avoid_: Strength, gap, final assessment, recommendation
+
+**Initial career suggestion**:
+One of up to three catalog careers in the participant's selected career interests, proposed as a direction to explore from the grouped DESMAP scores. It has a short explanation but no compatibility percentage or VR evidence.
+_Avoid_: Initial career match, final career suggestion, recommendation
 
 **Grouped DESMAP score**:
 One of the 28 normalized questionnaire scores used as input to the initial assessment.

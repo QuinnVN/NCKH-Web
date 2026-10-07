@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { ArrowUpRight, BadgeCheck, Copyright } from '@lucide/svelte';
+	import OnetAttribution from './OnetAttribution.svelte';
 </script>
 
 <footer class="border-t border-line bg-[#020202] pt-20">
@@ -31,4 +32,7 @@
 		>
 		<span>Đồng hành cùng chặng đường tiếp theo.</span>
 	</div>
+	<OnetAttribution
+		class="mx-auto w-[min(100%_-_2rem,90rem)] pb-6 min-[641px]:w-[min(100%_-_4rem,90rem)]"
+	/>
 </footer>

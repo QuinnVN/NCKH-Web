@@ -53,6 +53,16 @@ describe('start page login action', () => {
 		expect(result).toMatchObject({ status: 404, data: { success: false } });
 	});
 
+	it('logs the database error and returns 503 when MongoDB is unreachable', async () => {
+		const error = new Error('querySrv EBADRESP _mongodb._tcp.cluster0.example.mongodb.net');
+		repository.findQuestionnaireSubmission.mockRejectedValue(error);
+		const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+		const result = await actions.login(loginEvent('Nguyen Van A', 'student@example.com') as never);
+		expect(result).toMatchObject({ status: 503, data: { success: false } });
+		expect(log).toHaveBeenCalledWith(expect.any(String), error);
+		log.mockRestore();
+	});
+
 	it('rejects invalid participant details before querying MongoDB', async () => {
 		const result = await actions.login(loginEvent('', 'not-an-email') as never);
 		expect(result).toMatchObject({ status: 422, data: { success: false } });

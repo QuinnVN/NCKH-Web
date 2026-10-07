@@ -1,4 +1,5 @@
 import { careerInterestOptions, type CareerInterest } from '$lib/questionnaire';
+import catalog from './career-catalog.json';
 
 export type GroupedDimensionId =
 	| 'D1'
@@ -104,52 +105,35 @@ export const groupedDimensions: readonly AssessmentDimension[] = dimensionRows.m
 	([id, name, description]) => ({ id, name, description })
 );
 
-const careerRows: Array<[CareerId, string, string, string, number[]]> = [
-	[
-		'doctor',
-		'Bác sĩ',
-		'Khám, chẩn đoán và điều trị cho người bệnh.',
-		'doctor',
-		[3, 5, 2, 5, 2, 2, 5, 5, 5, 3, 4, 4, 5, 5, 2, 5, 3, 5, 4, 5, 4, 5, 5, 5, 5, 5, 4, 5]
-	],
-	[
-		'lawyer',
-		'Luật sư',
-		'Phân tích vụ việc, lập luận và bảo vệ quyền lợi hợp pháp.',
-		'lawyer',
-		[3, 4, 4, 4, 4, 2, 5, 5, 5, 1, 4, 4, 5, 3, 4, 5, 4, 4, 4, 5, 4, 5, 5, 5, 5, 4, 5, 5]
-	],
-	[
-		'teacher',
-		'Giáo viên',
-		'Giảng dạy, hướng dẫn và giúp người học phát triển.',
-		'teacher',
-		[2, 5, 3, 5, 3, 3, 5, 4, 5, 2, 4, 4, 4, 5, 2, 4, 5, 5, 4, 4, 5, 4, 4, 4, 4, 5, 5, 4]
-	],
+const careerRows: Array<[CareerId, string, string, string]> = [
+	['doctor', 'Bác sĩ', 'Khám, chẩn đoán và điều trị cho người bệnh.', 'doctor'],
+	['lawyer', 'Luật sư', 'Phân tích vụ việc, lập luận và bảo vệ quyền lợi hợp pháp.', 'lawyer'],
+	['teacher', 'Giáo viên', 'Giảng dạy, hướng dẫn và giúp người học phát triển.', 'teacher'],
 	[
 		'sales-representative',
 		'Nhân viên kinh doanh',
 		'Xây dựng kết nối và phát triển giải pháp cùng khách hàng.',
-		'sales-representative',
-		[5, 4, 4, 3, 5, 2, 4, 4, 5, 2, 3, 5, 4, 5, 4, 4, 4, 5, 3, 5, 4, 5, 5, 5, 4, 5, 5, 4]
+		'sales-representative'
 	],
 	[
 		'automotive-engineer',
 		'Kỹ sư ô tô',
 		'Thiết kế, chẩn đoán và giải quyết thử thách kỹ thuật.',
-		'automotive-engineer',
-		[4, 5, 4, 3, 3, 3, 4, 5, 3, 5, 5, 4, 5, 3, 3, 5, 4, 5, 4, 5, 5, 5, 4, 4, 5, 3, 3, 5]
+		'automotive-engineer'
 	]
 ];
 
 export const assessmentCareers: readonly AssessmentCareer[] = careerRows.map(
-	([id, name, description, nameSlug, weights]) => ({
+	([id, name, description, nameSlug]) => ({
 		id,
 		name,
 		description,
 		nameSlug,
+		// Provisional matches send whole-number importance; the catalog keeps O*NET precision.
 		weights: Object.fromEntries(
-			groupedDimensions.map((dimension, index) => [dimension.id, weights[index]])
+			Object.entries(catalog.careers.find((career) => career.id === id)!.weights).map(
+				([dimension, weight]) => [dimension, Math.round(weight)]
+			)
 		) as Record<GroupedDimensionId, number>
 	})
 );

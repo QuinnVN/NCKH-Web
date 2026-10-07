@@ -1,0 +1,171 @@
+[
+	{
+		"runId": "synthetic-v3-exchange-20",
+		"gameId": "sale",
+		"status": "completed",
+		"data": {
+			"part2": {
+				"pipelineVersion": "sales-openrouter-v3",
+				"rubricVersion": "sales-rubric-v3",
+				"scenarioVersion": "returning-shoes-v2",
+				"questionSetVersion": "sales-jev-v3",
+				"thresholdVersion": "sales-thresholds-v2.1",
+				"promptVersion": "lan-writer-v3",
+				"assessmentStatus": "completed",
+				"endingReason": "exchange_accepted",
+				"resolutionAccepted": true,
+				"turns": [],
+				"rawScore": 20,
+				"policyViolationPenalty": 0,
+				"policyViolations": [],
+				"score": 20,
+				"customerRating": "considering",
+				"criterionScores": {
+					"apologyAndPolicyRemedy": 20,
+					"adaptabilityAndDeescalation": 0
+				},
+				"trustState": "partially_restored",
+				"finalCustomerText": null,
+				"goodResponseCount": 0,
+				"badResponseCount": 0,
+				"emotionalHandling": true,
+				"causeIdentification": false,
+				"solutionSuitability": false,
+				"trustRebuilding": false,
+				"completionReason": "exchange_accepted",
+				"acceptedTurnCount": 2,
+				"silenceCount": 0,
+				"completedAtUtc": null
+			}
+		}
+	},
+	{
+		"runId": "synthetic-v3-exchange-30",
+		"gameId": "sale",
+		"status": "completed",
+		"data": {
+			"part2": {
+				"pipelineVersion": "sales-openrouter-v3",
+				"rubricVersion": "sales-rubric-v3",
+				"scenarioVersion": "returning-shoes-v2",
+				"questionSetVersion": "sales-jev-v3",
+				"thresholdVersion": "sales-thresholds-v2.1",
+				"promptVersion": "lan-writer-v3",
+				"assessmentStatus": "completed",
+				"endingReason": "exchange_accepted",
+				"resolutionAccepted": true,
+				"turns": [],
+				"rawScore": 30,
+				"policyViolationPenalty": 0,
+				"policyViolations": [],
+				"score": 30,
+				"customerRating": "considering",
+				"criterionScores": {
+					"apologyAndPolicyRemedy": 20,
+					"adaptabilityAndDeescalation": 10
+				},
+				"trustState": "partially_restored",
+				"finalCustomerText": null,
+				"goodResponseCount": 0,
+				"badResponseCount": 0,
+				"emotionalHandling": true,
+				"causeIdentification": false,
+				"solutionSuitability": false,
+				"trustRebuilding": false,
+				"completionReason": "exchange_accepted",
+				"acceptedTurnCount": 2,
+				"silenceCount": 0,
+				"completedAtUtc": null
+			}
+		}
+	},
+	{
+		"runId": "synthetic-v3-exchange-clipped",
+		"gameId": "sale",
+		"status": "completed",
+		"data": {
+			"part2": {
+				"pipelineVersion": "sales-openrouter-v3",
+				"rubricVersion": "sales-rubric-v3",
+				"scenarioVersion": "returning-shoes-v2",
+				"questionSetVersion": "sales-jev-v3",
+				"thresholdVersion": "sales-thresholds-v2.1",
+				"promptVersion": "lan-writer-v3",
+				"assessmentStatus": "completed",
+				"endingReason": "exchange_accepted",
+				"resolutionAccepted": true,
+				"turns": [],
+				"rawScore": 20,
+				"policyViolationPenalty": 20,
+				"policyViolations": [
+					{
+						"turnId": "turn-1",
+						"code": "unauthorized_refund"
+					},
+					{
+						"turnId": "turn-1",
+						"code": "unauthorized_discount"
+					}
+				],
+				"score": 0,
+				"customerRating": "considering",
+				"criterionScores": {
+					"apologyAndPolicyRemedy": 20,
+					"adaptabilityAndDeescalation": 0
+				},
+				"trustState": "partially_restored",
+				"finalCustomerText": null,
+				"goodResponseCount": 0,
+				"badResponseCount": 0,
+				"emotionalHandling": true,
+				"causeIdentification": false,
+				"solutionSuitability": false,
+				"trustRebuilding": false,
+				"completionReason": "exchange_accepted",
+				"acceptedTurnCount": 3,
+				"silenceCount": 0,
+				"completedAtUtc": null
+			}
+		}
+	},
+	{
+		"runId": "synthetic-v3-partial-no-open-question",
+		"gameId": "sale",
+		"status": "completed",
+		"data": {
+			"part2": {
+				"pipelineVersion": "sales-openrouter-v3",
+				"rubricVersion": "sales-rubric-v3",
+				"scenarioVersion": "returning-shoes-v2",
+				"questionSetVersion": "sales-jev-v3",
+				"thresholdVersion": "sales-thresholds-v2.1",
+				"promptVersion": "lan-writer-v3",
+				"assessmentStatus": "completed",
+				"endingReason": "stopped_early",
+				"resolutionAccepted": false,
+				"turns": [],
+				"rawScore": 60,
+				"policyViolationPenalty": 0,
+				"policyViolations": [],
+				"score": 60,
+				"customerRating": "considering",
+				"criterionScores": {
+					"apologyAndPolicyRemedy": 40,
+					"adaptabilityAndDeescalation": 20
+				},
+				"trustState": "partially_restored",
+				"finalCustomerText": null,
+				"goodResponseCount": 0,
+				"badResponseCount": 0,
+				"emotionalHandling": false,
+				"causeIdentification": false,
+				"solutionSuitability": true,
+				"trustRebuilding": false,
+				"completionReason": "stopped_early",
+				"acceptedTurnCount": 4,
+				"silenceCount": 0,
+				"completedAtUtc": null
+			}
+		}
+	}
+]

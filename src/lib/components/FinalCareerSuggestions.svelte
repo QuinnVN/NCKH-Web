@@ -1,10 +1,22 @@
 <script lang="ts">
 	import { Compass, Sparkles } from '@lucide/svelte';
-	import type { FinalCareerSuggestion } from '$lib/evaluation';
+	import { conciseCareerDescription } from '$lib/assessment/career-description';
+	import OnetAttribution from './OnetAttribution.svelte';
+	type CareerSuggestion = {
+		id: string;
+		name: string;
+		description: string;
+		compatibilityPercent?: number;
+	};
 
-	let { suggestions }: { suggestions: FinalCareerSuggestion[] } = $props();
+	let { suggestions, initial = false }: { suggestions: CareerSuggestion[]; initial?: boolean } =
+		$props();
 	let visibleSuggestions = $derived(
-		[...suggestions].sort((a, b) => b.compatibilityPercent - a.compatibilityPercent)
+		initial
+			? suggestions
+			: [...suggestions].sort(
+					(a, b) => (b.compatibilityPercent ?? 0) - (a.compatibilityPercent ?? 0)
+				)
 	);
 	let primarySuggestion = $derived(visibleSuggestions[0]);
 	let otherSuggestions = $derived(visibleSuggestions.slice(1));
@@ -22,7 +34,9 @@
 				</h2>
 			</div>
 			<p class="mt-2 mb-0 text-[.85rem] leading-6 text-[#91a0b4]">
-				AI đối chiếu toàn bộ kết quả DESMAP với hành vi quan sát được trong trải nghiệm VR.
+				{initial
+					? 'Chỉ dựa trên kết quả bài test DESMAP. Đây là những hướng để bạn tìm hiểu thêm, chưa phải kết luận nghề nghiệp.'
+					: 'Gợi ý dựa trên kết quả DESMAP và các tiêu chí đã được chấm trong VR. Bạn có thể dùng những hướng này để tìm hiểu và thử sức thêm.'}
 			</p>
 		</div>
 	</header>
@@ -39,7 +53,7 @@
 					>
 						<p class="m-0 inline-flex items-center gap-2 text-[.78rem] font-semibold text-lime">
 							<Sparkles size={13} strokeWidth={2.4} aria-hidden="true" />
-							Phù hợp nhất với hồ sơ của bạn
+							{initial ? 'Nghề nên tìm hiểu trước' : 'Hướng nên khám phá trước'}
 						</p>
 						<h3
 							class="m-0 max-w-[14ch] text-[clamp(2.25rem,5vw,4rem)] leading-[1.05] font-[760] tracking-[-.05em]"
@@ -51,11 +65,13 @@
 					<div
 						class="flex flex-col justify-center py-[clamp(1.5rem,3vw,2.5rem)] text-[#dce5f0] min-[820px]:pl-[clamp(1.5rem,3vw,3rem)]"
 					>
-						<p class="m-0 text-[.78rem] font-semibold text-lime">Vì sao đây là lựa chọn hàng đầu</p>
+						<p class="m-0 text-[.78rem] font-semibold text-lime">
+							{initial ? 'Vì sao đáng khám phá' : 'Gợi ý dành cho bạn'}
+						</p>
 						<p
 							class="mt-4 mb-0 max-w-[72ch] text-[clamp(.92rem,1.4vw,1.04rem)] leading-[1.75] whitespace-pre-line"
 						>
-							{primarySuggestion.description}
+							{conciseCareerDescription(primarySuggestion.description, true)}
 						</p>
 					</div>
 				</article>
@@ -77,7 +93,9 @@
 							<div>
 								<p class="m-0 text-[.72rem] font-semibold text-[#8caaf8]">Hướng tham khảo</p>
 								<h3 class="mt-1 mb-0 text-[clamp(1.15rem,2vw,1.5rem)]" id="other-careers-heading">
-									{otherSuggestions.length === 2 ? 'Hai' : otherSuggestions.length} nghề cũng phù hợp
+									{initial
+										? `${otherSuggestions.length === 2 ? 'Hai' : otherSuggestions.length} nghề khác để tìm hiểu`
+										: `${otherSuggestions.length === 2 ? 'Hai' : otherSuggestions.length} hướng khác để khám phá`}
 								</h3>
 							</div>
 						</div>
@@ -98,7 +116,7 @@
 								<p
 									class="m-0 max-w-[72ch] text-[.88rem] leading-[1.7] text-[#b9c6d8] max-[759px]:pl-10"
 								>
-									{suggestion.description}
+									{conciseCareerDescription(suggestion.description, false)}
 								</p>
 							</li>
 						{/each}
@@ -107,4 +125,5 @@
 			{/if}
 		</div>
 	</div>
+	<OnetAttribution class="mt-8 max-w-[72ch]" />
 </section>

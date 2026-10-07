@@ -1,4 +1,4 @@
-import type { Document } from 'mongodb';
+import type { Document, Db } from 'mongodb';
 import type { QuestionnaireSubmission, StageId } from '$lib/questionnaire';
 import {
 	behaviourComparisonIconIds,
@@ -14,6 +14,12 @@ import {
 	type DimensionLevelId
 } from '$lib/evaluation/final-dimension-content';
 import { getMongoDatabase } from './mongodb';
+import {
+	careerEvidenceDescription,
+	CAREER_RANKING_VERSION,
+	rankCareerSuggestions
+} from '$lib/assessment/career-ranking';
+import { careerObservations } from './career-observations';
 
 const stages: StageId[] = ['D', 'E', 'S', 'M', 'A', 'P'];
 const findingKinds: BehaviourComparisonKind[] = ['confirmed', 'emerging', 'development'];
@@ -176,9 +182,10 @@ export function parseStoredFinalEvaluation(
 }
 
 export async function findFinalEvaluation(
-	submission: Pick<QuestionnaireSubmission, 'assessmentId' | 'participant'>
+	submission: QuestionnaireSubmission
 ): Promise<FinalAssessment | null> {
-	const collection = (await getMongoDatabase()).collection<Document>('final_evaluations');
+	const database = await getMongoDatabase();
+	const collection = database.collection<Document>('final_evaluations');
 	const documents = await collection
 		.find({ participantEmail: submission.participant.email })
 		.sort({ completedAt: -1 })
@@ -186,7 +193,83 @@ export async function findFinalEvaluation(
 		.toArray();
 	for (const document of documents) {
 		const result = parseStoredFinalEvaluation(document, submission);
-		if (result) return result;
+		if (result) {
+			try {
+				return await refreshCareerSuggestions(database, document, result, submission);
+			} catch {
+				return result;
+			}
+		}
 	}
 	return null;
+}
+
+async function refreshCareerSuggestions(
+	database: Db,
+	document: Document,
+	result: FinalAssessment,
+	submission: QuestionnaireSubmission
+): Promise<FinalAssessment> {
+	const games = database.collection<Document>('game_results');
+	const names = await games.distinct('participantName', { status: 'completed' });
+	const signature = (name: string) => normalizeParticipantName(name).split(' ').sort().join(' ');
+	const matching = names.filter(
+		(name): name is string =>
+			typeof name === 'string' && signature(name) === signature(submission.participant.name)
+	);
+	// Legacy telemetry has no assessment ID. Accept only a unique name and
+	// never combine records explicitly assigned to another email/assessment.
+	if (matching.length !== 1) return result;
+	const identities = await database
+		.collection('questionnaire_submissions')
+		.distinct('normalizedEmail', {
+			'participant.name': { $in: matching }
+		});
+	if (identities.some((email) => email !== submission.participant.email)) return result;
+	const records = await games
+		.find(
+			{
+				participantName: matching[0],
+				status: 'completed',
+				$and: [
+					{
+						$or: [{ assessmentId: submission.assessmentId }, { assessmentId: { $exists: false } }]
+					},
+					{
+						$or: [
+							{ participantEmail: submission.participant.email },
+							{ participantEmail: { $exists: false } }
+						]
+					}
+				]
+			},
+			{ projection: { gameId: 1, runId: 1, status: 1, data: 1 } }
+		)
+		.toArray();
+	const observations = careerObservations(records);
+	if (!observations.length) return result;
+	const dimensions = Object.entries(submission.scores.groups).map(([id, value]) => ({
+		id,
+		score: value.percent
+	}));
+	const ranked = rankCareerSuggestions(dimensions, observations, submission.careerInterests, 7);
+	return {
+		...result,
+		careerSuggestions: ranked.map((item, index) => {
+			const written =
+				document.careerRankingVersion === CAREER_RANKING_VERSION
+					? result.careerSuggestions?.find(
+							(career) =>
+								career.id === item.career.id &&
+								career.compatibilityPercent === item.compatibilityPercent
+						)
+					: undefined;
+			return {
+				id: item.career.id,
+				name: item.career.name,
+				compatibilityPercent: item.compatibilityPercent,
+				description: written?.description ?? careerEvidenceDescription(item, index === 0)
+			};
+		})
+	};
 }
