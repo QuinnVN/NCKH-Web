@@ -8,4 +8,4 @@ Hai tiêu chí `apologyAndPolicyRemedy` và `adaptabilityAndDeescalation` có gi
 
 Parser chỉ trả các trường đánh giá và phiên bản được duyệt. Metadata nhà cung cấp, audio, checkpoints và API key không nằm trong kiểu dữ liệu này. Phiên cũ không có phiên bản vẫn được đọc theo giá trị đã lưu; parser không tự thêm provenance hoặc áp rubric v2 cho chúng.
 
-Nguồn đặc tả nằm trong `docs/specs/sales-dialogue-openrouter-upgrade.md`. Backend phải cập nhật hợp đồng aggregate cùng Unity trước khi người vận hành bật `SALES_PIPELINE_MODE=openrouter`. Cờ này mặc định `legacy` cho đến khi hoàn thành calibration, holdout, khảo sát lời Lan, latency và kiểm tra headset.
+Nguồn đặc tả nằm trong `docs/specs/sales-dialogue-openrouter-upgrade.md`. Backend phải cập nhật hợp đồng aggregate cùng Unity trước khi người vận hành bật `PIPELINE_MODE=openrouter`. Cờ này mặc định `legacy` cho đến khi hoàn thành calibration, holdout, khảo sát lời Lan, latency và kiểm tra headset.

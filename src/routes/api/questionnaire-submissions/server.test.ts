@@ -25,7 +25,7 @@ function getEvent(email: string): SubmissionEvent {
 		url: new URL(
 			`http://localhost/api/questionnaire-submissions?email=${encodeURIComponent(email)}`
 		)
-	} as SubmissionEvent;
+	} as unknown as SubmissionEvent;
 }
 
 function postEvent(value: unknown): SubmissionEvent {
@@ -35,7 +35,7 @@ function postEvent(value: unknown): SubmissionEvent {
 			headers: { 'content-type': 'application/json' },
 			body: JSON.stringify(value)
 		})
-	} as SubmissionEvent;
+	} as unknown as SubmissionEvent;
 }
 
 describe('questionnaire submission endpoint', () => {

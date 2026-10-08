@@ -51,7 +51,7 @@
 	let dimensionsExpanded = $state(false);
 	let finalAssessmentResult = $state<FinalAssessment | null>(null);
 	let finalLookupCompleted = $state(false);
-	let finalLookupPending = $derived(data.hasAssessmentCookie && !finalLookupCompleted);
+	let finalLookupPending = $derived(!finalLookupCompleted);
 	let finalAssessment = $derived(
 		finalAssessmentResult ??
 			(data.previewFinal && payload ? createPreviewFinalAssessment(payload) : null)
@@ -192,7 +192,34 @@
 		syncStatus = { assessmentId: payload.assessmentId, status: 'pending' };
 		syncStatus = await uploadQuestionnaireSubmission(payload);
 		syncInFlight = false;
-		if (syncStatus.status === 'synced') void syncInitialAssessment(true);
+		if (syncStatus.status !== 'synced') return;
+		void syncInitialAssessment(true);
+		// A submission synced only now may already have a final assessment in MongoDB.
+		if (!finalAssessmentResult) void refreshFinalAssessment();
+	}
+
+	/** Looks up the final assessment fresh on every visit; a database outage keeps the initial view. */
+	async function fetchFinalAssessment(assessmentId: string): Promise<FinalAssessment | null> {
+		try {
+			const result = await fetch('/api/final-evaluations', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify({ assessmentId })
+			});
+			if (!result.ok) return null;
+			const body = (await result.json()) as { finalAssessment?: FinalAssessment | null };
+			return body.finalAssessment?.assessmentId === assessmentId ? body.finalAssessment : null;
+		} catch {
+			return null;
+		}
+	}
+
+	async function refreshFinalAssessment() {
+		if (!payload) return;
+		const result = await fetchFinalAssessment(payload.assessmentId);
+		if (!result) return;
+		finalAssessmentResult = result;
+		viewState = 'success';
 	}
 
 	onMount(() => {
@@ -225,7 +252,9 @@
 				(syncStatus.status === 'error' && syncStatus.recoverable)
 			)
 				void syncSubmission();
-			finalAssessmentResult = await data.finalAssessment;
+			// The post-sync refresh may finish first; never replace its result with null.
+			finalAssessmentResult =
+				(await fetchFinalAssessment(payload.assessmentId)) ?? finalAssessmentResult;
 			finalLookupCompleted = true;
 			if (evaluationPageState(payload, finalAssessment) === 'final') viewState = 'success';
 			else void loadAssessment();

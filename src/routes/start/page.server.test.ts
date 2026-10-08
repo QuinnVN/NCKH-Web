@@ -23,8 +23,7 @@ function loginEvent(name: string, email: string) {
 	formData.set('name', name);
 	formData.set('email', email);
 	return {
-		request: new Request('http://localhost/start?/login', { method: 'POST', body: formData }),
-		cookies: { set: vi.fn() }
+		request: new Request('http://localhost/start?/login', { method: 'POST', body: formData })
 	};
 }
 
@@ -39,11 +38,6 @@ describe('start page login action', () => {
 		expect(repository.findQuestionnaireSubmission).toHaveBeenCalledWith(
 			'Nguyen Van A',
 			'student@example.com'
-		);
-		expect(event.cookies.set).toHaveBeenCalledWith(
-			'desmap_assessment_id',
-			submission.assessmentId,
-			expect.objectContaining({ httpOnly: true, path: '/', sameSite: 'lax' })
 		);
 	});
 
